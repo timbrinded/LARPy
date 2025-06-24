@@ -22,6 +22,8 @@ def parse_dex_name(price_string: str) -> str:
         return "Uniswap V3"
     elif price_string.startswith("SushiSwap"):
         return "SushiSwap"
+    elif price_string.startswith("Curve"):
+        return "Curve Finance"
     return "Unknown"
 
 
@@ -225,7 +227,7 @@ Token Pairs to check:
 {chr(10).join(f"- {pair}" for pair in token_pairs)}
 
 To analyze each pair:
-1. Use get_all_dex_prices() for each pair
+1. Use get_all_dex_prices_extended() for each pair
 2. Use find_arbitrage_opportunities() on the results
 3. Calculate expected profits with calculate_profit()
 

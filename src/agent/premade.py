@@ -18,10 +18,14 @@ from agent.tools.blockchain import (
     get_token_balance,
 )
 from agent.tools.dex_prices import (
-    get_1inch_price,
-    get_all_dex_prices,
     get_sushiswap_price,
     get_uniswap_v3_price,
+)
+from agent.tools.dex_prices_extended import (
+    get_all_dex_prices_extended,
+    get_curve_price,
+    get_fluid_dex_price,
+    get_maverick_price,
 )
 
 model = ChatOpenAI(model="gpt-4o-mini")
@@ -34,10 +38,12 @@ tools = [
     get_gas_price,
     estimate_transaction_cost,
     # DEX price tools
-    get_1inch_price,
     get_uniswap_v3_price,
     get_sushiswap_price,
-    get_all_dex_prices,
+    get_curve_price,
+    get_fluid_dex_price,
+    get_maverick_price,
+    get_all_dex_prices_extended,
     # Arbitrage analysis tools
     find_arbitrage_opportunities,
     calculate_profit,

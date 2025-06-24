@@ -3,7 +3,7 @@
 [![CI](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml)
 [![Integration Tests](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml)
 
-An Ethereum DEX arbitrage detection bot built with LangGraph. This agent analyzes price differences across major DEXs (Uniswap, SushiSwap, 1inch) to identify profitable arbitrage opportunities for popular tokens.
+An Ethereum DEX arbitrage detection bot built with LangGraph. This agent analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
 
 ## Architecture
 
@@ -17,7 +17,7 @@ An Ethereum DEX arbitrage detection bot built with LangGraph. This agent analyze
 
 This arbitrage bot is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph. The bot:
 
-- **Monitors Multiple DEXs**: Fetches real-time prices from Uniswap V3, SushiSwap, and 1inch
+- **Monitors Multiple DEXs**: Fetches real-time prices from Uniswap V3, SushiSwap, and Curve Finance
 - **Identifies Arbitrage**: Automatically detects profitable price discrepancies between exchanges
 - **Calculates Profits**: Factors in gas costs and provides net profit estimates
 - **Focuses on Major Tokens**: Works with well-audited tokens like ETH, USDC, USDT, WBTC, UNI, AAVE
@@ -31,10 +31,12 @@ This arbitrage bot is a proof-of-concept that demonstrates how to build a crypto
 - Estimate transaction costs
 
 ### DEX Price Tools
-- Fetch prices from 1inch aggregator
-- Query Uniswap V3 pools via subgraph
-- Get SushiSwap pair prices
+- **Uniswap V3**: Uses Quoter contract for accurate swap simulation
+- **SushiSwap**: Direct pool queries via getReserves()
+- **Curve Finance**: Supports stableswap (3pool) and crypto pools (ETH pairs)
+- **Extended Support**: Placeholders for Fluid DEX and Maverick Protocol
 - Compare prices across all DEXs simultaneously
+- Supports popular pairs: ETH/USDC, ETH/USDT, WBTC/ETH, ETH/DAI, stETH/ETH
 
 ### Arbitrage Analysis
 - Identify profitable opportunities above configurable thresholds
@@ -99,6 +101,8 @@ Once the server is running, you can interact with the bot through the LangGraph 
 #### 2. Compare prices across DEXs:
 ```
 "Show me ETH/USDC prices on all major DEXs"
+"Get DAI/USDC price on Curve"
+"Check stETH/ETH price on Curve Finance"
 ```
 
 #### 3. Find arbitrage opportunities:
@@ -221,9 +225,10 @@ uv run mypy src/
 ### Known Limitations
 
 - **Read-only**: Current implementation only detects opportunities, doesn't execute trades
-- **API Rate Limits**: Public endpoints may have rate limits
-- **Latency**: Subgraph queries can be slow for real-time arbitrage
+- **Direct Contract Queries**: Uniswap V3 and SushiSwap use on-chain queries which require checksummed addresses
 - **Gas Estimation**: Simple gas estimates may not reflect actual costs during high congestion
+- **Limited Pools**: Only includes major token pairs; less liquid pairs not supported
+- **No Aggregator**: Without 1inch, we only compare two DEXs instead of aggregated best prices
 
 ### Future Enhancements
 

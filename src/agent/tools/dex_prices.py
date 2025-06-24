@@ -1,8 +1,8 @@
 """DEX price fetching tools for various protocols."""
 
 
-import requests
 from langchain_core.tools import tool
+from web3 import Web3
 
 POPULAR_TOKENS = {
     "ETH": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
@@ -17,199 +17,326 @@ POPULAR_TOKENS = {
     "MKR": "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2",
 }
 
+# Popular Uniswap V3 pool addresses (checksummed)
+UNISWAP_V3_POOLS = {
+    "WETH/USDC": {
+        "address": "0x8ad599c3A0ff1De082011EfdDc58f1908eb6e6D8",
+        "fee": 3000,  # 0.3%
+        "token0": "USDC",
+        "token1": "WETH"
+    },
+    "WETH/USDT": {
+        "address": "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36",
+        "fee": 3000,
+        "token0": "USDT", 
+        "token1": "WETH"
+    },
+    "WBTC/WETH": {
+        "address": "0xCBCdF9626bC03E24f779434178A73a0B4bad62eD",
+        "fee": 3000,
+        "token0": "WBTC",
+        "token1": "WETH"
+    },
+    "WETH/WBTC": {  # Same pool, different direction for easier lookup
+        "address": "0xCBCdF9626bC03E24f779434178A73a0B4bad62eD",
+        "fee": 3000,
+        "token0": "WBTC",
+        "token1": "WETH"
+    },
+    "WETH/DAI": {
+        "address": "0xC2e9F25Be6257c210d7Adf0D4cD6E3E881ba25f8",
+        "fee": 3000,
+        "token0": "DAI",
+        "token1": "WETH"
+    },
+    "UNI/WETH": {
+        "address": "0x1d42064Fc4Beb5F8aAF85F4617AE8b3b5B8Bd801",
+        "fee": 3000,
+        "token0": "UNI",
+        "token1": "WETH"
+    },
+    "USDT/WETH": {
+        "address": "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36",
+        "fee": 3000,
+        "token0": "USDT",
+        "token1": "WETH"
+    }
+}
 
-@tool
-def get_1inch_price(
-    from_token: str, 
-    to_token: str, 
-    amount: str = "1000000000000000000"
-) -> str:
-    """Get token price from 1inch API.
+# Popular SushiSwap pool addresses (checksummed)
+SUSHISWAP_POOLS = {
+    "WETH/USDC": {
+        "address": "0x397FF1542f962076d0BFE58eA045FfA2d347ACa0",
+        "token0": "USDC",
+        "token1": "WETH"
+    },
+    "WETH/USDT": {
+        "address": "0x06da0fd433C1A5d7a4faa01111c044910A184553",
+        "token0": "WETH",
+        "token1": "USDT"
+    },
+    "WETH/DAI": {
+        "address": "0xC3D03e4F041Fd4cD388c549Ee2A29a9E5075882f",
+        "token0": "DAI",
+        "token1": "WETH"
+    },
+    "WBTC/WETH": {
+        "address": "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58",
+        "token0": "WBTC",
+        "token1": "WETH"
+    }
+}
+
+# Uniswap V3 Quoter contract address on mainnet
+UNISWAP_V3_QUOTER = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
+
+# Minimal ABI for Uniswap V3 Quoter
+UNISWAP_V3_QUOTER_ABI = [
+    {
+        "inputs": [
+            {"internalType": "address", "name": "tokenIn", "type": "address"},
+            {"internalType": "address", "name": "tokenOut", "type": "address"},
+            {"internalType": "uint24", "name": "fee", "type": "uint24"},
+            {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
+            {"internalType": "uint160", "name": "sqrtPriceLimitX96", "type": "uint160"}
+        ],
+        "name": "quoteExactInputSingle",
+        "outputs": [
+            {"internalType": "uint256", "name": "amountOut", "type": "uint256"}
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]
+
+# Minimal ABI for SushiSwap V2 pools
+SUSHISWAP_POOL_ABI = [
+    {
+        "name": "getReserves",
+        "outputs": [
+            {"internalType": "uint112", "name": "_reserve0", "type": "uint112"},
+            {"internalType": "uint112", "name": "_reserve1", "type": "uint112"},
+            {"internalType": "uint32", "name": "_blockTimestampLast", "type": "uint32"}
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "inputs": []
+    },
+    {
+        "name": "token0",
+        "outputs": [{"type": "address", "name": ""}],
+        "stateMutability": "view",
+        "type": "function",
+        "inputs": []
+    },
+    {
+        "name": "token1", 
+        "outputs": [{"type": "address", "name": ""}],
+        "stateMutability": "view",
+        "type": "function",
+        "inputs": []
+    }
+]
+
+
+
+
+def get_token_decimals(token_symbol: str) -> int:
+    """Get decimals for a token."""
+    decimals_map = {
+        "USDC": 6,
+        "USDT": 6, 
+        "WETH": 18,
+        "ETH": 18,
+        "WBTC": 8,
+        "DAI": 18,
+        "UNI": 18,
+        "AAVE": 18,
+        "LINK": 18,
+        "MKR": 18
+    }
+    return decimals_map.get(token_symbol.upper(), 18)
+
+
+def find_uniswap_pool(from_token: str, to_token: str) -> dict | None:
+    """Find Uniswap V3 pool for a token pair."""
+    # Normalize token symbols
+    from_token = from_token.upper()
+    to_token = to_token.upper()
     
-    Args:
-        from_token: Source token symbol (e.g., "ETH", "USDC")
-        to_token: Destination token symbol
-        amount: Amount in wei (defaults to 1 ETH worth)
-        
-    Returns:
-        Price quote and route information
-    """
-    try:
-        # Convert symbols to addresses
-        from_address = POPULAR_TOKENS.get(from_token.upper(), from_token)
-        to_address = POPULAR_TOKENS.get(to_token.upper(), to_token)
-        
-        url = "https://api.1inch.dev/swap/v6.0/1/quote"
-        headers = {
-            "Accept": "application/json",
-        }
-        params = {
-            "src": from_address,
-            "dst": to_address,
-            "amount": amount,
-        }
-        
-        response = requests.get(url, headers=headers, params=params)
-        
-        if response.status_code != 200:
-            return f"Error: 1inch API returned status {response.status_code}"
-            
-        data = response.json()
-        
-        # Calculate price
-        src_decimals = 18 if from_token.upper() in ["ETH", "WETH"] else 6 if from_token.upper() in ["USDC", "USDT"] else 18
-        dst_decimals = 18 if to_token.upper() in ["ETH", "WETH"] else 6 if to_token.upper() in ["USDC", "USDT"] else 18
-        
-        from_amount = int(amount) / (10 ** src_decimals)
-        to_amount = int(data["dstAmount"]) / (10 ** dst_decimals)
-        price = to_amount / from_amount
-        
-        return f"1inch: 1 {from_token} = {price:.6f} {to_token} (via {len(data.get('protocols', [[]]))} routes)"
-    except Exception as e:
-        return f"Error fetching 1inch price: {str(e)}"
+    # Convert ETH to WETH for pool lookup
+    if from_token == "ETH":
+        from_token = "WETH"
+    if to_token == "ETH":
+        to_token = "WETH"
+    
+    # Check both orderings
+    pair1 = f"{from_token}/{to_token}"
+    pair2 = f"{to_token}/{from_token}"
+    
+    for pair_key, pool_info in UNISWAP_V3_POOLS.items():
+        if pair_key == pair1 or pair_key == pair2:
+            return pool_info
+    
+    return None
 
 
 @tool
-def get_uniswap_v3_price(from_token: str, to_token: str) -> str:
-    """Get token price from Uniswap V3 subgraph.
+def get_uniswap_v3_price(from_token: str, to_token: str, rpc_url: str = "https://eth.llamarpc.com") -> str:
+    """Get token price from Uniswap V3 using the Quoter contract.
     
     Args:
         from_token: Source token symbol
         to_token: Destination token symbol
+        rpc_url: Ethereum RPC endpoint
         
     Returns:
         Current price from Uniswap V3
     """
     try:
-        # Convert symbols to addresses
-        from_address = POPULAR_TOKENS.get(from_token.upper(), from_token).lower()
-        to_address = POPULAR_TOKENS.get(to_token.upper(), to_token).lower()
+        pool_info = find_uniswap_pool(from_token, to_token)
+        if not pool_info:
+            return f"No Uniswap V3 pool found for {from_token}/{to_token}"
         
-        # Uniswap V3 subgraph
-        url = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3"
+        # Connect to web3
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        if not w3.is_connected():
+            return "Error: Could not connect to Ethereum network"
         
-        # Query for pool data
-        query = f"""
-        query {{
-            pools(
-                where: {{
-                    token0_in: ["{from_address}", "{to_address}"]
-                    token1_in: ["{from_address}", "{to_address}"]
-                }}
-                first: 5
-                orderBy: volumeUSD
-                orderDirection: desc
-            ) {{
-                id
-                token0 {{
-                    symbol
-                    decimals
-                }}
-                token1 {{
-                    symbol
-                    decimals
-                }}
-                token0Price
-                token1Price
-                volumeUSD
-                feeTier
-            }}
-        }}
-        """
+        # Get the Quoter contract
+        quoter = w3.eth.contract(address=UNISWAP_V3_QUOTER, abi=UNISWAP_V3_QUOTER_ABI)
         
-        response = requests.post(url, json={"query": query})
+        # Convert token symbols to addresses
+        from_address = POPULAR_TOKENS.get(from_token.upper(), from_token)
+        to_address = POPULAR_TOKENS.get(to_token.upper(), to_token)
         
-        if response.status_code != 200:
-            return f"Error: Uniswap subgraph returned status {response.status_code}"
+        # Use WETH address for ETH
+        if from_address == POPULAR_TOKENS["ETH"]:
+            from_address = POPULAR_TOKENS["WETH"]
+        if to_address == POPULAR_TOKENS["ETH"]:
+            to_address = POPULAR_TOKENS["WETH"]
+        
+        # Amount to quote (1 token of from_token)
+        from_decimals = get_token_decimals(from_token)
+        amount_in = 10 ** from_decimals
+        
+        # Call quoteExactInputSingle
+        try:
+            amount_out = quoter.functions.quoteExactInputSingle(
+                Web3.to_checksum_address(from_address),
+                Web3.to_checksum_address(to_address),
+                pool_info["fee"],
+                amount_in,
+                0  # sqrtPriceLimitX96 = 0 means no price limit
+            ).call()
             
-        data = response.json()
-        pools = data.get("data", {}).get("pools", [])
-        
-        if not pools:
-            return f"No Uniswap V3 pools found for {from_token}/{to_token}"
+            # Calculate price
+            to_decimals = get_token_decimals(to_token)
+            price = amount_out / (10 ** to_decimals)
             
-        # Find the pool with highest volume
-        best_pool = pools[0]
-        
-        # Determine price based on token order
-        if best_pool["token0"]["symbol"].upper() == from_token.upper():
-            price = float(best_pool["token0Price"])
-        else:
-            price = float(best_pool["token1Price"])
+            fee_tier = pool_info["fee"] / 10000
             
-        fee_tier = int(best_pool["feeTier"]) / 10000
-        
-        return f"Uniswap V3: 1 {from_token} = {price:.6f} {to_token} (fee: {fee_tier}%)"
+            return f"Uniswap V3: 1 {from_token} = {price:.6f} {to_token} (fee: {fee_tier}%)"
+        except Exception as quote_error:
+            # If quoter fails, it might be because the tokens are in wrong order
+            # Try swapping them
+            try:
+                amount_out = quoter.functions.quoteExactInputSingle(
+                    Web3.to_checksum_address(to_address),
+                    Web3.to_checksum_address(from_address),
+                    pool_info["fee"],
+                    10 ** get_token_decimals(to_token),
+                    0
+                ).call()
+                
+                # Calculate inverted price
+                from_decimals = get_token_decimals(from_token)
+                inverted_price = amount_out / (10 ** from_decimals)
+                price = 1 / inverted_price
+                
+                fee_tier = pool_info["fee"] / 10000
+                
+                return f"Uniswap V3: 1 {from_token} = {price:.6f} {to_token} (fee: {fee_tier}%)"
+            except Exception:
+                return f"Error getting quote: {str(quote_error)}"
     except Exception as e:
         return f"Error fetching Uniswap price: {str(e)}"
 
 
+def find_sushiswap_pool(from_token: str, to_token: str) -> dict | None:
+    """Find SushiSwap pool for a token pair."""
+    # Normalize token symbols
+    from_token = from_token.upper()
+    to_token = to_token.upper()
+    
+    # Convert ETH to WETH for pool lookup
+    if from_token == "ETH":
+        from_token = "WETH"
+    if to_token == "ETH":
+        to_token = "WETH"
+    
+    # Check both orderings
+    pair1 = f"{from_token}/{to_token}"
+    pair2 = f"{to_token}/{from_token}"
+    
+    for pair_key, pool_info in SUSHISWAP_POOLS.items():
+        if pair_key == pair1 or pair_key == pair2:
+            return pool_info
+    
+    return None
+
+
 @tool
-def get_sushiswap_price(from_token: str, to_token: str) -> str:
-    """Get token price from SushiSwap.
+def get_sushiswap_price(from_token: str, to_token: str, rpc_url: str = "https://eth.llamarpc.com") -> str:
+    """Get token price directly from SushiSwap pool contract.
     
     Args:
         from_token: Source token symbol
         to_token: Destination token symbol
+        rpc_url: Ethereum RPC endpoint
         
     Returns:
         Current price from SushiSwap
     """
     try:
-        # Convert symbols to addresses
-        from_address = POPULAR_TOKENS.get(from_token.upper(), from_token).lower()
-        to_address = POPULAR_TOKENS.get(to_token.upper(), to_token).lower()
+        pool_info = find_sushiswap_pool(from_token, to_token)
+        if not pool_info:
+            return f"No SushiSwap pool found for {from_token}/{to_token}"
         
-        # SushiSwap subgraph
-        url = "https://api.thegraph.com/subgraphs/name/sushi-v2/sushiswap-ethereum"
+        # Connect to web3
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        if not w3.is_connected():
+            return "Error: Could not connect to Ethereum network"
         
-        query = f"""
-        query {{
-            pairs(
-                where: {{
-                    token0_in: ["{from_address}", "{to_address}"]
-                    token1_in: ["{from_address}", "{to_address}"]
-                }}
-                first: 5
-                orderBy: volumeUSD
-                orderDirection: desc
-            ) {{
-                id
-                token0 {{
-                    symbol
-                    decimals
-                }}
-                token1 {{
-                    symbol
-                    decimals
-                }}
-                token0Price
-                token1Price
-                volumeUSD
-            }}
-        }}
-        """
+        # Get pool contract
+        pool = w3.eth.contract(address=pool_info["address"], abi=SUSHISWAP_POOL_ABI)
         
-        response = requests.post(url, json={"query": query})
+        # Get reserves
+        reserves = pool.functions.getReserves().call()
+        reserve0 = reserves[0]
+        reserve1 = reserves[1]
         
-        if response.status_code != 200:
-            return f"Error: SushiSwap subgraph returned status {response.status_code}"
-            
-        data = response.json()
-        pairs = data.get("data", {}).get("pairs", [])
+        # Get token decimals
+        token0_decimals = get_token_decimals(pool_info["token0"])
+        token1_decimals = get_token_decimals(pool_info["token1"])
         
-        if not pairs:
-            return f"No SushiSwap pairs found for {from_token}/{to_token}"
-            
-        best_pair = pairs[0]
+        # Normalize token names for comparison
+        from_token_normalized = "WETH" if from_token.upper() == "ETH" else from_token.upper()
+        to_token_normalized = "WETH" if to_token.upper() == "ETH" else to_token.upper()
         
-        # Determine price based on token order
-        if best_pair["token0"]["symbol"].upper() == from_token.upper():
-            price = float(best_pair["token0Price"])
+        # Calculate price based on which token we're converting from/to
+        if pool_info["token0"] == from_token_normalized and pool_info["token1"] == to_token_normalized:
+            # from_token is token0, to_token is token1
+            # Price = reserve1 / reserve0 (adjusted for decimals)
+            final_price = (reserve1 / reserve0) * (10**token0_decimals) / (10**token1_decimals)
+        elif pool_info["token1"] == from_token_normalized and pool_info["token0"] == to_token_normalized:
+            # from_token is token1, to_token is token0
+            # Price = reserve0 / reserve1 (adjusted for decimals)
+            final_price = (reserve0 / reserve1) * (10**token1_decimals) / (10**token0_decimals)
         else:
-            price = float(best_pair["token1Price"])
+            return f"Token pair mismatch in pool for {from_token}/{to_token}"
             
-        return f"SushiSwap: 1 {from_token} = {price:.6f} {to_token}"
+        return f"SushiSwap: 1 {from_token} = {final_price:.6f} {to_token}"
     except Exception as e:
         return f"Error fetching SushiSwap price: {str(e)}"
 
@@ -228,9 +355,6 @@ def get_all_dex_prices(from_token: str, to_token: str) -> str:
     results = []
     
     # Get prices from each DEX
-    inch_price = get_1inch_price(from_token, to_token)
-    results.append(inch_price)
-    
     uni_price = get_uniswap_v3_price(from_token, to_token)
     results.append(uni_price)
     
