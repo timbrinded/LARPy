@@ -41,7 +41,7 @@ LANGSMITH_TRACING=true uv run pytest tests/integration_tests/
 
 ## Architecture Overview
 
-This is a LangGraph agent template that implements a state-based graph processing system. The core architecture consists of:
+LARPy is a LangGraph agent that implements a state-based graph processing system for Ethereum arbitrage. The core architecture consists of:
 
 ### Core Graph System (`src/agent/graph.py`)
 - **State Management**: Uses `@dataclass` for type-safe state handling

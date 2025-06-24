@@ -1,21 +1,17 @@
-# Ethereum Arbitrage Bot - LangGraph Agent
+# LARPy - Ethereum Arbitrage Bot
 
 [![CI](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml)
 [![Integration Tests](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml)
 
-An Ethereum DEX arbitrage detection bot built with LangGraph. This agent analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
+LARPy is an Ethereum DEX arbitrage detection bot built with LangGraph. This agent analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
 
 ## Architecture
 
-![LangGraph Agent Template Architecture](./static/architecture.png)
-
-<div align="center">
-  <img src="./static/studio_ui.png" alt="Graph view in LangGraph studio UI" width="75%" />
-</div>
+![LARPy Architecture](./static/architecture.png)
 
 ## Overview
 
-This arbitrage bot is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph. The bot:
+LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph. The bot:
 
 - **Monitors Multiple DEXs**: Fetches real-time prices from Uniswap V3, SushiSwap, and Curve Finance
 - **Identifies Arbitrage**: Automatically detects profitable price discrepancies between exchanges

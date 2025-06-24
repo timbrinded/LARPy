@@ -1,4 +1,4 @@
-# Ethereum Arbitrage Bot - Implementation Notes
+# LARPy - Implementation Notes
 
 ## Architecture Reflections
 
