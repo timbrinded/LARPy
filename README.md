@@ -1,9 +1,9 @@
-# LangGraph Agent Template
+# Ethereum Arbitrage Bot - LangGraph Agent
 
 [![CI](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml)
 [![Integration Tests](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml)
 
-A production-ready starter template for building LangGraph-based AI agents with LangGraph Server and visual debugging through LangGraph Studio.
+An Ethereum DEX arbitrage detection bot built with LangGraph. This agent analyzes price differences across major DEXs (Uniswap, SushiSwap, 1inch) to identify profitable arbitrage opportunities for popular tokens.
 
 ## Architecture
 
@@ -15,13 +15,32 @@ A production-ready starter template for building LangGraph-based AI agents with 
 
 ## Overview
 
-This template provides a minimal yet extensible foundation for building stateful AI agents using LangGraph. It includes:
+This arbitrage bot is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph. The bot:
 
-- **Single-node graph**: A simple starting point (`src/agent/graph.py`) that processes state and applies runtime configuration
-- **Type-safe state management**: Using dataclasses for robust state handling
-- **Configurable parameters**: Dynamic configuration at runtime or assistant creation
-- **Visual debugging**: Full integration with LangGraph Studio for graph visualization and step-by-step debugging
-- **Production tooling**: Tests, linting, type checking, and dependency management with uv
+- **Monitors Multiple DEXs**: Fetches real-time prices from Uniswap V3, SushiSwap, and 1inch
+- **Identifies Arbitrage**: Automatically detects profitable price discrepancies between exchanges
+- **Calculates Profits**: Factors in gas costs and provides net profit estimates
+- **Focuses on Major Tokens**: Works with well-audited tokens like ETH, USDC, USDT, WBTC, UNI, AAVE
+- **Provides Clear Strategies**: Generates step-by-step execution plans for identified opportunities
+
+## Features
+
+### Blockchain Tools
+- Check ETH and ERC-20 token balances
+- Monitor current gas prices
+- Estimate transaction costs
+
+### DEX Price Tools
+- Fetch prices from 1inch aggregator
+- Query Uniswap V3 pools via subgraph
+- Get SushiSwap pair prices
+- Compare prices across all DEXs simultaneously
+
+### Arbitrage Analysis
+- Identify profitable opportunities above configurable thresholds
+- Calculate expected profits after gas costs
+- Generate formatted trading strategies
+- Analyze multiple token pairs in batch
 
 ## Getting Started
 
@@ -29,6 +48,7 @@ This template provides a minimal yet extensible foundation for building stateful
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) package manager
+- OpenAI API key (for the LLM agent)
 
 ### Installation
 
@@ -40,24 +60,21 @@ uv sync
 uv run pip install -e .
 ```
 
-2. Install the LangGraph CLI for running the development server:
+2. Set up environment variables:
 
 ```bash
-uv run pip install "langgraph-cli[inmem]"
+# Create .env file
+echo "OPENAI_API_KEY=your-openai-api-key-here" > .env
+
+# Optional: Add LangSmith for tracing
+echo "LANGSMITH_API_KEY=your-langsmith-key" >> .env
 ```
 
-3. (Optional) Set up environment variables for secrets and API keys:
+3. (Optional) Configure custom RPC endpoints for better reliability:
 
 ```bash
-cp .env.example .env
-```
-
-Configure your `.env` file with necessary API keys:
-
-```text
-# .env
-LANGSMITH_API_KEY=lsv2...  # For LangSmith tracing (optional)
-# Add other API keys as needed
+# Add to .env for custom Ethereum RPC (default uses public endpoints)
+echo "ETH_RPC_URL=https://your-eth-rpc-endpoint" >> .env
 ```
 
 ### Running the Agent
@@ -70,13 +87,89 @@ uv run langgraph dev
 
 The server will start on `http://localhost:8123` with LangGraph Studio available for visual debugging.
 
-For production deployment information, see the [LangGraph Server documentation](https://langchain-ai.github.io/langgraph/tutorials/langgraph-platform/local-server/).
+### Testing the Arbitrage Bot
 
-## How to customize
+Once the server is running, you can interact with the bot through the LangGraph Studio UI or API. Here are example queries:
 
-1. **Define configurable parameters**: Modify the `Configuration` class in the `graph.py` file to expose the arguments you want to configure. For example, in a chatbot application you may want to define a dynamic system prompt or LLM to use. For more information on configurations in LangGraph, [see here](https://langchain-ai.github.io/langgraph/concepts/low_level/?h=configuration#configuration).
+#### 1. Check current gas prices:
+```
+"What's the current gas price on Ethereum?"
+```
 
-2. **Extend the graph**: The core logic of the application is defined in [graph.py](./src/agent/graph.py). You can modify this file to add new nodes, edges, or change the flow of information.
+#### 2. Compare prices across DEXs:
+```
+"Show me ETH/USDC prices on all major DEXs"
+```
+
+#### 3. Find arbitrage opportunities:
+```
+"Find arbitrage opportunities for ETH/USDC, ETH/USDT, and WBTC/ETH pairs"
+```
+
+#### 4. Get a full arbitrage analysis:
+```
+"Analyze ETH/USDC for arbitrage opportunities and show me the potential profit for trading 10 ETH"
+```
+
+#### 5. Check token balances:
+```
+"What's the USDC balance for address 0x..."
+```
+
+### Example Arbitrage Detection Flow
+
+1. The agent fetches prices from multiple DEXs
+2. Identifies price discrepancies above the threshold (default 0.5%)
+3. Calculates potential profit after gas costs
+4. Provides a detailed execution strategy
+
+Example output:
+```
+🎯 ARBITRAGE OPPORTUNITY FOUND!
+
+Buy on: SushiSwap
+Price: 1 ETH = 3,245.50 USDC
+
+Sell on: Uniswap V3  
+Price: 1 ETH = 3,262.75 USDC
+
+Profit: 0.53%
+Strategy: Buy ETH on SushiSwap, sell on Uniswap V3
+Net profit after gas: 0.41% (assuming 0.01 ETH gas cost)
+```
+
+## Customization & Extension
+
+### Adding New DEXs
+
+To add support for more DEXs, create new tools in `src/agent/tools/dex_prices.py`:
+
+```python
+@tool
+def get_curve_price(from_token: str, to_token: str) -> str:
+    """Get token price from Curve Finance."""
+    # Implementation here
+```
+
+### Adjusting Arbitrage Parameters
+
+Modify the minimum profit threshold in `src/agent/tools/arbitrage.py`:
+
+```python
+# Change from default 0.5% to 1%
+find_arbitrage_opportunities(price_data, min_profit_percentage=1.0)
+```
+
+### Adding New Token Pairs
+
+Update the `POPULAR_TOKENS` dict in `src/agent/tools/dex_prices.py`:
+
+```python
+POPULAR_TOKENS = {
+    "NEW_TOKEN": "0x...",  # Add new token address
+    # ... existing tokens
+}
+```
 
 ## Development
 
@@ -113,17 +206,33 @@ uv run mypy src/
 - **Thread management**: Use the `+` button to create new threads with fresh state
 - **Tracing**: Integrated with [LangSmith](https://smith.langchain.com/) for detailed execution traces
 
-### Extending the Graph
+### Security Considerations
 
-The agent's core logic is in `src/agent/graph.py`. Common extensions include:
+⚠️ **IMPORTANT**: This is a proof-of-concept. For production use:
 
-1. **Adding new nodes**: Create additional processing steps in your graph
-2. **Implementing tools**: Connect external APIs or functions as tools
-3. **State persistence**: Add memory or conversation history
-4. **Complex routing**: Implement conditional edges based on state
-5. **Streaming**: Enable token-by-token streaming for LLM responses
+1. **Never store private keys in code or environment variables**
+2. **Use hardware wallets or secure key management systems**
+3. **Implement proper slippage protection**
+4. **Add MEV protection for transaction execution**
+5. **Use private mempools or flashbots for sensitive transactions**
+6. **Implement circuit breakers and position limits**
+7. **Monitor for sandwich attacks**
 
-For advanced patterns and examples, see the [LangGraph documentation](https://langchain-ai.github.io/langgraph/).
+### Known Limitations
+
+- **Read-only**: Current implementation only detects opportunities, doesn't execute trades
+- **API Rate Limits**: Public endpoints may have rate limits
+- **Latency**: Subgraph queries can be slow for real-time arbitrage
+- **Gas Estimation**: Simple gas estimates may not reflect actual costs during high congestion
+
+### Future Enhancements
+
+- **Flashloan Integration**: Add tools for capital-free arbitrage using Aave/dYdX
+- **Transaction Execution**: Implement secure transaction signing and submission
+- **Real-time Monitoring**: WebSocket connections for live price feeds
+- **Multi-hop Arbitrage**: Support complex paths like ETH → USDC → DAI → ETH
+- **Cross-chain Arbitrage**: Add support for L2s and bridges
+- **Analytics Dashboard**: Track historical performance and opportunities
 
 <!--
 Configuration auto-generated by `langgraph template lock`. DO NOT EDIT MANUALLY.
