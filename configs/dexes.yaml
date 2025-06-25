@@ -395,6 +395,12 @@ curve:
       tokens: ["USDT", "WBTC", "ETH"]
       pool_type: "tricrypto"
       dex: "curve"
+    # TriCryptoUSDC pool (USDC/WBTC/ETH)
+    - address: "0x7F86Bf177Dd4F3494b841a37e810A34dD56c829B"
+      name: "TriCryptoUSDC"
+      tokens: ["USDC", "WBTC", "ETH"]
+      pool_type: "tricrypto"
+      dex: "curve"
     # Stableswap-NG Pools
     - address: "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2"
       name: "FRAX/USDC"

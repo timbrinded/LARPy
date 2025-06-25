@@ -73,10 +73,10 @@ class TestCurvePrices:
 
     def test_get_curve_price_non_existent_pair(self):
         """Test behavior for token pair with no Curve pool."""
-        result = get_curve_price.func("USDC", "WBTC")
+        result = get_curve_price.func("FOO", "BAR")
 
         # Should not find pools for this pair in our config
-        assert "No Curve pools found for USDC/WBTC pair" in result
+        assert "No Curve pools found for FOO/BAR pair" in result
 
 
 class TestUniswapV3Prices:

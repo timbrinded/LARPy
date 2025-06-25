@@ -351,8 +351,9 @@ def get_curve_native_eth_address() -> str:
 
 def normalize_token_address_for_curve(token_symbol: str) -> str | None:
     """Get token address normalized for Curve (handles ETH special case)."""
-    # Normalize WETH to ETH for Curve
+    # For ETH, we need to try multiple representations
     if token_symbol.upper() in ["ETH", "WETH"]:
+        # Return ETH native address for now, but pools might use WETH
         return get_curve_native_eth_address()
 
     loader = get_config_loader()
@@ -363,10 +364,21 @@ def find_token_index_in_pool(
     pool_contract, token_address: str, num_tokens: int = 8
 ) -> int | None:
     """Find the index of a token in a Curve pool."""
+    # For ETH, we need to check multiple possible addresses
+    eth_addresses = []
+    if token_address.lower() == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee":
+        # Also check for WETH address
+        eth_addresses = [
+            token_address.lower(),
+            "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",  # WETH
+        ]
+    else:
+        eth_addresses = [token_address.lower()]
+
     for i in range(num_tokens):
         try:
             coin_addr = pool_contract.functions.coins(i).call()
-            if coin_addr.lower() == token_address.lower():
+            if coin_addr.lower() in eth_addresses:
                 return i
         except Exception:
             # No more coins in this pool
@@ -520,38 +532,38 @@ def discover_curve_registry_pools(
     from_token: str, to_token: str, w3: Web3, registry_contract, max_search: int = 5
 ) -> List[Tuple[str, str]]:
     """Discover pools from the main Curve registry.
-    
+
     Returns list of (pool_address, pool_type) tuples.
     """
     pools = []
-    
+
     try:
         # Get normalized addresses
         from_addr = normalize_token_address_for_curve(from_token)
         to_addr = normalize_token_address_for_curve(to_token)
-        
+
         if not from_addr or not to_addr:
             return pools
-            
+
         # Main registry can find pools directly
         try:
             # Try the version without index first (returns best pool)
             pool_addr = registry_contract.functions.find_pool_for_coins(
                 from_addr, to_addr
             ).call()
-            
+
             if pool_addr != "0x0000000000000000000000000000000000000000":
                 pools.append((pool_addr, "registry"))
         except Exception:
             pass
-            
+
         # Try indexed search
         for i in range(max_search):
             try:
                 pool_addr = registry_contract.functions.find_pool_for_coins(
                     from_addr, to_addr, i
                 ).call()
-                
+
                 if pool_addr != "0x0000000000000000000000000000000000000000":
                     if (pool_addr, "registry") not in pools:
                         pools.append((pool_addr, "registry"))
@@ -559,11 +571,95 @@ def discover_curve_registry_pools(
                     break
             except Exception:
                 break
-                
+
     except Exception:
         pass
-        
+
     return pools
+
+
+def find_curve_pools_from_registry(
+    from_token: str, to_token: str, w3: Web3, max_search: int = 10
+) -> List[str]:
+    """Find Curve pools from both main and crypto registries.
+
+    Returns list of unique pool addresses.
+    """
+    pools = set()
+    config = get_config()
+
+    # Get curve config
+    curve_config = config.dexes.get("curve")
+    if not curve_config:
+        return list(pools)
+
+    # Get registry ABIs
+    registry_abi = None
+    for contract in curve_config.contracts:
+        if contract.name == "Registry":
+            registry_abi = contract.abi
+            break
+
+    if not registry_abi:
+        return list(pools)
+
+    # Get normalized addresses
+    from_addr = normalize_token_address_for_curve(from_token)
+    to_addr = normalize_token_address_for_curve(to_token)
+
+    if not from_addr or not to_addr:
+        return list(pools)
+
+    # Check main registry
+    if hasattr(curve_config, "registry_address") and curve_config.registry_address:
+        try:
+            registry = w3.eth.contract(
+                address=curve_config.registry_address, abi=registry_abi
+            )
+
+            # Search for pools
+            for i in range(max_search):
+                try:
+                    pool_addr = registry.functions.find_pool_for_coins(
+                        from_addr, to_addr, i
+                    ).call()
+
+                    if pool_addr != "0x0000000000000000000000000000000000000000":
+                        pools.add(pool_addr)
+                    else:
+                        break
+                except Exception:
+                    break
+        except Exception:
+            pass
+
+    # Check crypto registry (for ETH pairs)
+    if (
+        hasattr(curve_config, "crypto_registry_address")
+        and curve_config.crypto_registry_address
+    ):
+        try:
+            crypto_registry = w3.eth.contract(
+                address=curve_config.crypto_registry_address, abi=registry_abi
+            )
+
+            # Search for pools
+            for i in range(max_search):
+                try:
+                    pool_addr = crypto_registry.functions.find_pool_for_coins(
+                        from_addr, to_addr, i
+                    ).call()
+
+                    if pool_addr != "0x0000000000000000000000000000000000000000":
+                        pools.add(pool_addr)
+                    else:
+                        break
+                except Exception:
+                    break
+        except Exception:
+            pass
+
+    return list(pools)
 
 
 @tool
@@ -632,8 +728,12 @@ def get_curve_price(
             views_contract = w3.eth.contract(
                 address=curve_config.views_address, abi=views_abi
             )
-            
-        if hasattr(curve_config, 'registry_address') and curve_config.registry_address and registry_abi:
+
+        if (
+            hasattr(curve_config, "registry_address")
+            and curve_config.registry_address
+            and registry_abi
+        ):
             registry_contract = w3.eth.contract(
                 address=curve_config.registry_address, abi=registry_abi
             )
@@ -641,13 +741,15 @@ def get_curve_price(
         results = []
 
         # Normalize WETH to ETH for Curve pool searching
-        search_from_token = "ETH" if from_token.upper() == "WETH" else from_token.upper()
+        search_from_token = (
+            "ETH" if from_token.upper() == "WETH" else from_token.upper()
+        )
         search_to_token = "ETH" if to_token.upper() == "WETH" else to_token.upper()
 
         # Check legacy pools from config (including tricrypto) if available
         legacy_pools = []
         ng_pools = []
-        
+
         if hasattr(curve_config, "pools") and curve_config.pools:
             legacy_pools = [
                 p
@@ -723,19 +825,19 @@ def get_curve_price(
             registry_pools = discover_curve_registry_pools(
                 from_token, to_token, w3, registry_contract
             )
-            
+
             # Get all known addresses from previous searches
             known_addresses = (
-                [p.address.lower() for p in legacy_pools] + 
-                [p.address.lower() for p in ng_pools] +
-                [p.lower() for p in new_pools]
+                [p.address.lower() for p in legacy_pools]
+                + [p.address.lower() for p in ng_pools]
+                + [p.lower() for p in new_pools]
             )
-            
+
             for pool_addr, pool_type in registry_pools:
                 if pool_addr.lower() not in known_addresses:
                     # Get ABI for this pool
                     pool_abi = abi_fetcher.get_curve_pool_abi(pool_addr)
-                    
+
                     # Try as legacy pool first
                     price = get_legacy_curve_price(
                         pool_addr, from_token, to_token, w3, pool_abi
@@ -743,6 +845,47 @@ def get_curve_price(
                     if price:
                         results.append(
                             f"Curve {pool_addr[:8]}: 1 {from_token} = {price:.6f} {to_token}"
+                        )
+
+        # Also check crypto registry for ETH pairs
+        crypto_registry_contract = None
+        if (
+            hasattr(curve_config, "crypto_registry_address")
+            and curve_config.crypto_registry_address
+            and registry_abi
+        ):
+            try:
+                crypto_registry_contract = w3.eth.contract(
+                    address=curve_config.crypto_registry_address, abi=registry_abi
+                )
+            except Exception:
+                pass
+
+        if crypto_registry_contract:
+            crypto_pools = discover_curve_registry_pools(
+                from_token, to_token, w3, crypto_registry_contract
+            )
+
+            # Get all known addresses from all previous searches
+            known_addresses = (
+                [p.address.lower() for p in legacy_pools]
+                + [p.address.lower() for p in ng_pools]
+                + [p.lower() for p in new_pools]
+                + [p[0].lower() for p in registry_pools]
+            )
+
+            for pool_addr, pool_type in crypto_pools:
+                if pool_addr.lower() not in known_addresses:
+                    # Get ABI for this pool
+                    pool_abi = abi_fetcher.get_curve_pool_abi(pool_addr)
+
+                    # Try as legacy pool
+                    price = get_legacy_curve_price(
+                        pool_addr, from_token, to_token, w3, pool_abi
+                    )
+                    if price:
+                        results.append(
+                            f"Curve Crypto {pool_addr[:8]}: 1 {from_token} = {price:.6f} {to_token}"
                         )
 
         if results:
@@ -932,7 +1075,26 @@ def get_all_dex_prices(from_token: str, to_token: str) -> str:
     sushi_price = get_sushiswap_price.func(from_token, to_token)
     results.append(sushi_price)
 
+    # Add Curve price
+    curve_price = get_curve_price.func(from_token, to_token)
+    results.append(curve_price)
+
     return "\n".join(results)
+
+
+def get_stablecoin_substitutes(token: str) -> List[str]:
+    """Get fungible stablecoin substitutes for a given token.
+
+    For major stablecoins (USDC, USDT, DAI), returns other stablecoins
+    that can be used as substitutes in trading pairs.
+    """
+    stablecoin_groups = {
+        "USDC": ["USDT", "DAI"],
+        "USDT": ["USDC", "DAI"],
+        "DAI": ["USDC", "USDT"],
+    }
+
+    return stablecoin_groups.get(token.upper(), [])
 
 
 @tool
@@ -967,5 +1129,67 @@ def get_all_dex_prices_extended(from_token: str, to_token: str) -> str:
     # Add Maverick (when implemented)
     maverick_price = get_maverick_price.func(from_token, to_token)
     results.append(maverick_price)
+
+    return "\n".join(results)
+
+
+@tool
+def get_all_dex_prices_with_stablecoin_fungibility(
+    from_token: str, to_token: str
+) -> str:
+    """Get prices from all DEXs including stablecoin substitute paths.
+
+    For stablecoin pairs, this will also check paths through other stablecoins
+    to find more liquidity. For example, ETH->USDC will also check ETH->USDT->USDC.
+
+    Args:
+        from_token: Source token symbol
+        to_token: Destination token symbol
+
+    Returns:
+        Direct prices and prices via stablecoin substitutes
+    """
+    results = []
+
+    # Get direct prices first
+    results.append("=== Direct Prices ===")
+    direct_prices = get_all_dex_prices_extended.func(from_token, to_token)
+    results.append(direct_prices)
+
+    # Check if either token is a stablecoin
+    from_substitutes = get_stablecoin_substitutes(from_token)
+    to_substitutes = get_stablecoin_substitutes(to_token)
+
+    # If the destination is a stablecoin, check paths through other stablecoins
+    if to_substitutes:
+        results.append(f"\n=== Prices via stablecoin substitutes for {to_token} ===")
+        for substitute in to_substitutes:
+            results.append(f"\n--- Via {substitute} ---")
+            # Get price from source to substitute
+            step1_prices = get_all_dex_prices_extended.func(from_token, substitute)
+            results.append(f"Step 1: {from_token} -> {substitute}")
+            results.append(step1_prices)
+
+            # Get price from substitute to destination
+            step2_prices = get_all_dex_prices_extended.func(substitute, to_token)
+            results.append(f"\nStep 2: {substitute} -> {to_token}")
+            results.append(step2_prices)
+
+    # If the source is a stablecoin, check reverse paths
+    if from_substitutes:
+        results.append(
+            f"\n=== Prices starting from stablecoin substitutes for {from_token} ==="
+        )
+        for substitute in from_substitutes:
+            results.append(f"\n--- From {substitute} ---")
+            # Get price from substitute to destination
+            step1_prices = get_all_dex_prices_extended.func(substitute, to_token)
+            results.append(f"Step 1: {substitute} -> {to_token}")
+            results.append(step1_prices)
+
+            # Get price from source to substitute
+            step2_prices = get_all_dex_prices_extended.func(from_token, substitute)
+            results.append(f"\nStep 2: {from_token} -> {substitute}")
+            results.append(step2_prices)
 
     return "\n".join(results)
