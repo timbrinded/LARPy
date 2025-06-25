@@ -1,7 +1,7 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "agent": "./src/agent/premade.py:agent"
+    "agent": "./src/agent/premade.py:graph"
   },
   "env": ".env",
   "image_distro": "wolfi"

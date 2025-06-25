@@ -51,7 +51,7 @@ tools = [
     analyze_token_pair_opportunities
 ]
 
-agent = create_react_agent(
+graph = create_react_agent(
     model=model,
     tools=tools
 )
