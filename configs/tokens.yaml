@@ -1,4 +1,13 @@
 # Token configurations
+
+# Native ETH (special entries for different protocols)
+ETH:
+  address: "0x0000000000000000000000000000000000000000"  # Zero address for native ETH
+  curve_address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"  # Special address for Curve
+  symbol: "ETH"
+  name: "Ether"
+  decimals: 18
+  chain_id: 1
 WETH:
   address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
   symbol: "WETH"

@@ -3,6 +3,7 @@ min_profit_percentage: 0.5
 gas_cost_estimate_eth: 0.01
 max_slippage: 0.5
 flash_loan_fee: 0.09
+default_gas_limit: 200000
 
 # Default token pairs to analyze
 default_token_pairs:

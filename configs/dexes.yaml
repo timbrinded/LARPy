@@ -1,4 +1,31 @@
 # DEX configurations
+
+# Common ABIs used across multiple contracts
+common_abis:
+  erc20:
+    - constant: true
+      inputs:
+        - name: "_owner"
+          type: "address"
+      name: "balanceOf"
+      outputs:
+        - name: "balance"
+          type: "uint256"
+      type: "function"
+    - constant: true
+      inputs: []
+      name: "decimals"
+      outputs:
+        - name: ""
+          type: "uint8"
+      type: "function"
+    - constant: true
+      inputs: []
+      name: "symbol"
+      outputs:
+        - name: ""
+          type: "string"
+      type: "function"
 uniswap_v3:
   name: "Uniswap V3"
   quoter_address: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"

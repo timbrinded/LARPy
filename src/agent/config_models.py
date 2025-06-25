@@ -24,6 +24,7 @@ class TokenConfig(BaseModel):
     name: str
     decimals: int
     chain_id: int = 1  # Default to Ethereum mainnet
+    curve_address: str | None = None  # Special address for Curve protocol
 
 
 class PoolConfig(BaseModel):
@@ -68,6 +69,9 @@ class ArbitrageConfig(BaseModel):
     )
     max_slippage: float = Field(default=0.5, description="Maximum slippage percentage")
     flash_loan_fee: float = Field(default=0.09, description="Flash loan fee percentage")
+    default_gas_limit: int = Field(
+        default=200000, description="Default gas limit for transactions"
+    )
     default_token_pairs: List[List[str]] = Field(
         default_factory=lambda: [
             ["WETH", "USDC"],

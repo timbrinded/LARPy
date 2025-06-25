@@ -1,7 +1,7 @@
 """Configuration loader utility for loading YAML configs into Pydantic models."""
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import yaml
 
@@ -66,6 +66,9 @@ class ConfigLoader:
         dex_configs = {}
         if dexes:
             for dex_name, dex_data in dexes.items():
+                # Skip common_abis section
+                if dex_name == "common_abis":
+                    continue
                 # Convert pool dicts to PoolConfig objects
                 pools = []
                 if "pools" in dex_data:
@@ -162,6 +165,21 @@ class ConfigLoader:
                 return pool
 
         return None
+
+    def get_common_abi(self, abi_name: str) -> List[Dict] | None:
+        """Get a common ABI by name.
+
+        Args:
+            abi_name: Name of the common ABI (e.g., "erc20").
+
+        Returns:
+            Optional[List[Dict]]: ABI definition or None if not found.
+        """
+        dexes_data = self._load_yaml("dexes.yaml")
+        if not dexes_data or "common_abis" not in dexes_data:
+            return None
+
+        return dexes_data["common_abis"].get(abi_name)
 
     def reload(self) -> Config:
         """Reload configuration from disk.
