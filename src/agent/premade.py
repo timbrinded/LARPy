@@ -18,6 +18,7 @@ from agent.tools.blockchain import (
     get_gas_price,
     get_token_balance,
 )
+from agent.tools.curve_dex import discover_curve_pools
 from agent.tools.dex_prices import (
     get_all_dex_prices,
     get_sushiswap_price,
@@ -56,6 +57,7 @@ tools = [
     get_sushiswap_price,
     get_all_dex_prices,
     get_curve_price,
+    discover_curve_pools,
     get_fluid_dex_price,
     get_maverick_price,
     get_all_dex_prices_extended,

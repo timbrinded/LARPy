@@ -31,11 +31,14 @@ class PoolConfig(BaseModel):
     """Configuration for a DEX pool."""
 
     address: str
-    token0: str
-    token1: str
+    token0: str | None = None  # Optional for compatibility with multi-token pools
+    token1: str | None = None  # Optional for compatibility with multi-token pools
+    tokens: List[str] | None = None  # For Curve pools with multiple tokens
     fee: int | None = None  # For Uniswap V3
     dex: str
     chain_id: int = 1
+    pool_type: str | None = None  # e.g. "legacy", "stableswap-ng"
+    name: str | None = None  # Human-readable pool name
 
 
 class ContractConfig(BaseModel):
@@ -54,6 +57,7 @@ class DexConfig(BaseModel):
     router_address: str | None = None
     factory_address: str | None = None
     quoter_address: str | None = None
+    views_address: str | None = None  # For Curve Stableswap-NG Views contract
     pools: List[PoolConfig] = []
     contracts: List[ContractConfig] = []
 

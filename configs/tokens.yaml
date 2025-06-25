@@ -134,3 +134,11 @@ GUSD:
   name: "Gemini Dollar"
   decimals: 2
   chain_id: 1
+
+# Liquid Staking Tokens
+stETH:
+  address: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
+  symbol: "stETH"
+  name: "Lido Staked Ether"
+  decimals: 18
+  chain_id: 1

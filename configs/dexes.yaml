@@ -180,7 +180,10 @@ sushiswap:
 curve:
   name: "Curve Finance"
   router_address: "0x1338397B6794DE5cc08a4a27E7960e86b72a7b95"
+  factory_address: "0x6A8cbed756804B16E05E741eDaBd5cB544AE21bf"  # Stableswap-NG Factory
+  views_address: "0x07CdEBF81977E111B08C126DEFA07818d0045b80"  # Stableswap-NG Views
   contracts:
+    # Router NG Contract
     - address: "0x1338397B6794DE5cc08a4a27E7960e86b72a7b95"
       name: "Router NG"
       abi:
@@ -230,18 +233,196 @@ curve:
               type: "uint256"
           stateMutability: "payable"
           type: "function"
+    # Stableswap-NG Factory Contract
+    - address: "0x6A8cbed756804B16E05E741eDaBd5cB544AE21bf"
+      name: "Stableswap-NG Factory"
+      abi:
+        - inputs: []
+          name: "pool_count"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "uint256"
+              name: "index"
+              type: "uint256"
+          name: "pool_list"
+          outputs:
+            - internalType: "address"
+              name: ""
+              type: "address"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "address"
+              name: "_from"
+              type: "address"
+            - internalType: "address"
+              name: "_to"
+              type: "address"
+            - internalType: "uint256"
+              name: "i"
+              type: "uint256"
+          name: "find_pool_for_coins"
+          outputs:
+            - internalType: "address"
+              name: ""
+              type: "address"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "address"
+              name: "_pool"
+              type: "address"
+          name: "get_coins"
+          outputs:
+            - internalType: "address[8]"
+              name: ""
+              type: "address[8]"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "address"
+              name: "_pool"
+              type: "address"
+          name: "get_decimals"
+          outputs:
+            - internalType: "uint256[8]"
+              name: ""
+              type: "uint256[8]"
+          stateMutability: "view"
+          type: "function"
+    # Stableswap-NG Views Contract
+    - address: "0x07CdEBF81977E111B08C126DEFA07818d0045b80"
+      name: "Stableswap-NG Views"
+      abi:
+        - inputs:
+            - internalType: "address"
+              name: "_pool"
+              type: "address"
+            - internalType: "uint256"
+              name: "i"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "j"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "dx"
+              type: "uint256"
+          name: "get_dy"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "address"
+              name: "_pool"
+              type: "address"
+            - internalType: "uint256"
+              name: "i"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "j"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "dy"
+              type: "uint256"
+          name: "get_dx"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
+    # Generic Stableswap Pool ABI (used by both legacy and NG pools)
+    - address: "0x0000000000000000000000000000000000000000"  # Placeholder for pool ABI
+      name: "Stableswap Pool"
+      abi:
+        - inputs:
+            - internalType: "uint256"
+              name: "i"
+              type: "uint256"
+          name: "coins"
+          outputs:
+            - internalType: "address"
+              name: ""
+              type: "address"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "uint256"
+              name: "i"
+              type: "uint256"
+          name: "balances"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
+        - inputs: []
+          name: "fee"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "uint256"
+              name: "i"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "j"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "dx"
+              type: "uint256"
+          name: "get_dy"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "uint256"
+              name: "i"
+              type: "uint256"
+          name: "price_oracle"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
   pools:
+    # Legacy Curve Pools
     - address: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
-      token0: "DAI"
-      token1: "USDC"
+      name: "3pool"
+      tokens: ["DAI", "USDC", "USDT"]  # Using array for multi-token pools
+      pool_type: "legacy"
       dex: "curve"
+    - address: "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022"
+      name: "stETH/ETH"
+      tokens: ["ETH", "stETH"]
+      pool_type: "legacy"
+      dex: "curve"
+    # Stableswap-NG Pools
     - address: "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2"
-      token0: "FRAX"
-      token1: "USDC"
+      name: "FRAX/USDC"
+      tokens: ["FRAX", "USDC"]
+      pool_type: "stableswap-ng"
       dex: "curve"
     - address: "0x4eBdF703948ddCEA3B11f675B4D1Fba9d2414A14"
-      token0: "USDC"
-      token1: "USDT"
+      name: "USDC/USDT/crvUSD"
+      tokens: ["USDC", "USDT", "crvUSD"]
+      pool_type: "stableswap-ng"
       dex: "curve"
 
 maverick:
