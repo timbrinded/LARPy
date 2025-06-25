@@ -18,17 +18,15 @@ from agent.tools.blockchain import (
     get_gas_price,
     get_token_balance,
 )
-from agent.tools.curve_dex import discover_curve_pools
 from agent.tools.dex_prices import (
+    discover_curve_pools,
     get_all_dex_prices,
-    get_sushiswap_price,
-    get_uniswap_v3_price,
-)
-from agent.tools.dex_prices_extended import (
     get_all_dex_prices_extended,
     get_curve_price,
     get_fluid_dex_price,
     get_maverick_price,
+    get_sushiswap_price,
+    get_uniswap_v3_price,
 )
 
 # Set up logging

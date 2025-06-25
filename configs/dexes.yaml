@@ -28,6 +28,7 @@ common_abis:
       type: "function"
 uniswap_v3:
   name: "Uniswap V3"
+  factory_address: "0x1f98431c8ad98523631ae4a59f267346ea31f984"
   quoter_address: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
   contracts:
     - address: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
@@ -168,7 +169,7 @@ sushiswap:
       token0: "DAI"
       token1: "WETH"
       dex: "sushiswap"
-    - address: "0x680A025dA7b1be2c204D7745e809919bCE074026"
+    - address: "0x680A025Da7b1be2c204D7745e809919bCE074026"
       token0: "USDC"
       token1: "USDT"
       dex: "sushiswap"
@@ -182,6 +183,8 @@ curve:
   router_address: "0x1338397B6794DE5cc08a4a27E7960e86b72a7b95"
   factory_address: "0x6A8cbed756804B16E05E741eDaBd5cB544AE21bf"  # Stableswap-NG Factory
   views_address: "0x07CdEBF81977E111B08C126DEFA07818d0045b80"  # Stableswap-NG Views
+  registry_address: "0x90E00ACe148ca3b23Ac1bC8C240C2a7Dd9c2d7f5"  # Main Registry (stablecoins)
+  crypto_registry_address: "0x8F942C20D02bEfc377D41445793068908E2250D0"  # Crypto Registry
   contracts:
     # Router NG Contract
     - address: "0x1338397B6794DE5cc08a4a27E7960e86b72a7b95"
@@ -339,15 +342,18 @@ curve:
               type: "uint256"
           stateMutability: "view"
           type: "function"
-    # Generic Stableswap Pool ABI (used by both legacy and NG pools)
-    - address: "0x0000000000000000000000000000000000000000"  # Placeholder for pool ABI
-      name: "Stableswap Pool"
+    # Main Registry Contract
+    - address: "0x90E00ACe148ca3b23Ac1bC8C240C2a7Dd9c2d7f5"
+      name: "Registry"
       abi:
         - inputs:
-            - internalType: "uint256"
-              name: "i"
-              type: "uint256"
-          name: "coins"
+            - internalType: "address"
+              name: "_from"
+              type: "address"
+            - internalType: "address"
+              name: "_to"
+              type: "address"
+          name: "find_pool_for_coins"
           outputs:
             - internalType: "address"
               name: ""
@@ -355,50 +361,20 @@ curve:
           stateMutability: "view"
           type: "function"
         - inputs:
+            - internalType: "address"
+              name: "_from"
+              type: "address"
+            - internalType: "address"
+              name: "_to"
+              type: "address"
             - internalType: "uint256"
               name: "i"
               type: "uint256"
-          name: "balances"
+          name: "find_pool_for_coins"
           outputs:
-            - internalType: "uint256"
+            - internalType: "address"
               name: ""
-              type: "uint256"
-          stateMutability: "view"
-          type: "function"
-        - inputs: []
-          name: "fee"
-          outputs:
-            - internalType: "uint256"
-              name: ""
-              type: "uint256"
-          stateMutability: "view"
-          type: "function"
-        - inputs:
-            - internalType: "uint256"
-              name: "i"
-              type: "uint256"
-            - internalType: "uint256"
-              name: "j"
-              type: "uint256"
-            - internalType: "uint256"
-              name: "dx"
-              type: "uint256"
-          name: "get_dy"
-          outputs:
-            - internalType: "uint256"
-              name: ""
-              type: "uint256"
-          stateMutability: "view"
-          type: "function"
-        - inputs:
-            - internalType: "uint256"
-              name: "i"
-              type: "uint256"
-          name: "price_oracle"
-          outputs:
-            - internalType: "uint256"
-              name: ""
-              type: "uint256"
+              type: "address"
           stateMutability: "view"
           type: "function"
   pools:
@@ -412,6 +388,12 @@ curve:
       name: "stETH/ETH"
       tokens: ["ETH", "stETH"]
       pool_type: "legacy"
+      dex: "curve"
+    # TriCrypto2 pool (USDT/WBTC/ETH)
+    - address: "0xD51a44d3FaE010294C616388b506AcdA1bfAAE46"
+      name: "TriCrypto2"
+      tokens: ["USDT", "WBTC", "ETH"]
+      pool_type: "tricrypto"
       dex: "curve"
     # Stableswap-NG Pools
     - address: "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2"

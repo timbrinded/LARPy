@@ -58,6 +58,7 @@ class DexConfig(BaseModel):
     factory_address: str | None = None
     quoter_address: str | None = None
     views_address: str | None = None  # For Curve Stableswap-NG Views contract
+    registry_address: str | None = None  # For Curve main registry
     pools: List[PoolConfig] = []
     contracts: List[ContractConfig] = []
 
