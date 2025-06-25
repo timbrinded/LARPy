@@ -1,0 +1,13 @@
+# Arbitrage strategy parameters
+min_profit_percentage: 0.5
+gas_cost_estimate_eth: 0.01
+max_slippage: 0.5
+flash_loan_fee: 0.09
+
+# Default token pairs to analyze
+default_token_pairs:
+  - ["WETH", "USDC"]
+  - ["WETH", "USDT"]
+  - ["USDC", "USDT"]
+  - ["WETH", "DAI"]
+  - ["USDC", "DAI"]

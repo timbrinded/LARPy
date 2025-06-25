@@ -45,7 +45,7 @@ LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates h
 ### Prerequisites
 
 - Python 3.11+
-- [uv](https://docs.astral.sh/uv/) package manager
+- [uv](https://docs.astral.sh/uv/) - Fast Python package manager (replaces pip)
 - OpenAI API key (for the LLM agent)
 
 ### Installation
@@ -55,7 +55,6 @@ LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates h
 ```bash
 cd path/to/test-agent
 uv sync
-uv run pip install -e .
 ```
 
 2. Set up environment variables:
@@ -138,40 +137,84 @@ Strategy: Buy ETH on SushiSwap, sell on Uniswap V3
 Net profit after gas: 0.41% (assuming 0.01 ETH gas cost)
 ```
 
+## Configuration System
+
+LARPy uses a YAML-based configuration system with Pydantic validation for all static data:
+
+- **`configs/chains.yaml`** - Blockchain networks and RPC endpoints
+- **`configs/tokens.yaml`** - Token addresses, symbols, and decimals
+- **`configs/dexes.yaml`** - DEX pools, contracts, and ABIs
+- **`configs/arbitrage.yaml`** - Trading parameters and thresholds
+- **`configs/models.yaml`** - LLM model settings
+
+### Using Configuration
+
+```python
+from agent.config_loader import get_config
+
+# Access configuration
+config = get_config()
+rpc_url = config.default_chain.rpc_url
+min_profit = config.arbitrage.min_profit_percentage
+```
+
 ## Customization & Extension
 
 ### Adding New DEXs
 
-To add support for more DEXs, create new tools in `src/agent/tools/dex_prices.py`:
+1. Add pool configurations to `configs/dexes.yaml`
+2. Create new tools in `src/agent/tools/dex_prices.py`:
 
 ```python
 @tool
-def get_curve_price(from_token: str, to_token: str) -> str:
-    """Get token price from Curve Finance."""
-    # Implementation here
+def get_new_dex_price(from_token: str, to_token: str) -> str:
+    """Get token price from New DEX."""
+    config = get_config()
+    # Use config for pool addresses, ABIs, etc.
 ```
 
 ### Adjusting Arbitrage Parameters
 
-Modify the minimum profit threshold in `src/agent/tools/arbitrage.py`:
+Edit `configs/arbitrage.yaml`:
 
-```python
-# Change from default 0.5% to 1%
-find_arbitrage_opportunities(price_data, min_profit_percentage=1.0)
+```yaml
+# Change minimum profit threshold
+min_profit_percentage: 1.0  # Changed from 0.5%
+gas_cost_estimate_eth: 0.015  # Adjust gas estimates
 ```
 
 ### Adding New Token Pairs
 
-Update the `POPULAR_TOKENS` dict in `src/agent/tools/dex_prices.py`:
+Add tokens to `configs/tokens.yaml`:
 
-```python
-POPULAR_TOKENS = {
-    "NEW_TOKEN": "0x...",  # Add new token address
-    # ... existing tokens
-}
+```yaml
+NEW_TOKEN:
+  address: "0x..."
+  symbol: "NEW"
+  name: "New Token"
+  decimals: 18
+  chain_id: 1
 ```
 
 ## Development
+
+### Package Management with UV
+
+This project uses [UV](https://docs.astral.sh/uv/) exclusively - a fast Rust-based Python package manager that replaces pip:
+
+```bash
+# Install dependencies (NOT pip install -r requirements.txt)
+uv sync
+
+# Add a new package
+uv add <package-name>
+
+# List installed packages
+uv tree
+
+# Run any command in the project environment
+uv run <command>
+```
 
 ### Running Tests
 
@@ -184,18 +227,22 @@ uv run pytest tests/unit_tests/
 
 # Run integration tests
 uv run pytest tests/integration_tests/
+
+# Or use Make targets (which use UV internally)
+make test
+make integration_tests
 ```
 
 ### Code Quality
 
 ```bash
-# Run linting
+# Run linting and formatting
+make lint        # Runs ruff + mypy
+make format      # Auto-formats code
+
+# Or run directly with UV
 uv run ruff check .
-
-# Auto-fix linting issues
 uv run ruff check --fix .
-
-# Type checking
 uv run mypy src/
 ```
 

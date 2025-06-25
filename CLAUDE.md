@@ -2,13 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important: UV Package Manager
+
+This project uses **UV** exclusively for package management - it is a complete replacement for pip written in Rust that offers 8-100x faster performance. **Do not use pip commands** in this repository.
+
+Key UV commands:
+- `uv sync` - Install all dependencies from pyproject.toml
+- `uv add <package>` - Install a specific package
+- `uv run <command>` - Run a command in the project environment
+
 ## Development Commands
 
 ### Core Development
 ```bash
 # Setup and install
-uv sync                           # Install dependencies
-uv run pip install -e .          # Install package in editable mode
+uv sync                           # Install dependencies (NOT pip install)
 
 # Run development server
 uv run langgraph dev             # Start LangGraph server with Studio UI
@@ -115,3 +123,59 @@ To create or update architecture diagrams for the README:
 5. Reference in README as: `![Architecture](./static/architecture.png)`
 
 Note: System Python has matplotlib installed, use `python script.py` directly instead of `uv run python`.
+
+## Configuration System
+
+The project now uses a formalized configuration system with Pydantic models and YAML files:
+
+### Configuration Structure
+```
+configs/
+├── chains.yaml        # Blockchain network configurations (RPC URLs, chain IDs)
+├── tokens.yaml        # Token addresses, symbols, and decimals
+├── dexes.yaml        # DEX pools, contracts, and ABIs
+├── arbitrage.yaml     # Arbitrage strategy parameters
+└── models.yaml        # LLM model configurations
+```
+
+### Using Configuration in Code
+```python
+from agent.config_loader import get_config, get_config_loader
+
+# Get full configuration
+config = get_config()
+rpc_url = config.default_chain.rpc_url
+
+# Get specific token address
+loader = get_config_loader()
+weth_address = loader.get_token_address("WETH")
+
+# Find a specific pool
+pool = loader.get_pool("uniswap_v3", "WETH", "USDC", fee=3000)
+```
+
+### Configuration Models (`src/agent/config_models.py`)
+- `ChainConfig` - Blockchain network settings
+- `TokenConfig` - Token metadata
+- `PoolConfig` - DEX pool configurations
+- `ContractConfig` - Smart contract addresses and ABIs
+- `DexConfig` - DEX-specific settings
+- `ArbitrageConfig` - Trading parameters
+- `ModelConfig` - LLM settings
+
+### Adding New Configurations
+1. Update the appropriate YAML file in `configs/`
+2. The configuration loader automatically validates against Pydantic models
+3. Access via `get_config()` or specific helper methods
+
+### Example: Adding a New Chain
+```yaml
+# In configs/chains.yaml
+polygon:
+  name: "Polygon"
+  chain_id: 137
+  rpc_url: "https://polygon-rpc.com"
+  explorer_url: "https://polygonscan.com"
+  native_token: "MATIC"
+  block_time: 2.0
+```

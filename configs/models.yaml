@@ -1,0 +1,4 @@
+# LLM model configurations
+provider: "openai"
+model_name: "o4-mini-2025-04-16"
+max_tokens: null

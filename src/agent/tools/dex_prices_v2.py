@@ -1,162 +1,20 @@
-"""DEX price fetching tools for various protocols."""
+"""DEX price fetching tools using configuration system."""
 
 from langchain_core.tools import tool
 from web3 import Web3
 
-POPULAR_TOKENS = {
-    "ETH": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-    "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-    "WBTC": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-    "DAI": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-    "UNI": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-    "AAVE": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
-    "LINK": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
-    "MKR": "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2",
-}
-
-# Popular Uniswap V3 pool addresses (checksummed)
-UNISWAP_V3_POOLS = {
-    "WETH/USDC": {
-        "address": "0x8ad599c3A0ff1De082011EfdDc58f1908eb6e6D8",
-        "fee": 3000,  # 0.3%
-        "token0": "USDC",
-        "token1": "WETH",
-    },
-    "WETH/USDT": {
-        "address": "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36",
-        "fee": 3000,
-        "token0": "USDT",
-        "token1": "WETH",
-    },
-    "WBTC/WETH": {
-        "address": "0xCBCdF9626bC03E24f779434178A73a0B4bad62eD",
-        "fee": 3000,
-        "token0": "WBTC",
-        "token1": "WETH",
-    },
-    "WETH/WBTC": {  # Same pool, different direction for easier lookup
-        "address": "0xCBCdF9626bC03E24f779434178A73a0B4bad62eD",
-        "fee": 3000,
-        "token0": "WBTC",
-        "token1": "WETH",
-    },
-    "WETH/DAI": {
-        "address": "0xC2e9F25Be6257c210d7Adf0D4cD6E3E881ba25f8",
-        "fee": 3000,
-        "token0": "DAI",
-        "token1": "WETH",
-    },
-    "UNI/WETH": {
-        "address": "0x1d42064Fc4Beb5F8aAF85F4617AE8b3b5B8Bd801",
-        "fee": 3000,
-        "token0": "UNI",
-        "token1": "WETH",
-    },
-    "USDT/WETH": {
-        "address": "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36",
-        "fee": 3000,
-        "token0": "USDT",
-        "token1": "WETH",
-    },
-}
-
-# Popular SushiSwap pool addresses (checksummed)
-SUSHISWAP_POOLS = {
-    "WETH/USDC": {
-        "address": "0x397FF1542f962076d0BFE58eA045FfA2d347ACa0",
-        "token0": "USDC",
-        "token1": "WETH",
-    },
-    "WETH/USDT": {
-        "address": "0x06da0fd433C1A5d7a4faa01111c044910A184553",
-        "token0": "WETH",
-        "token1": "USDT",
-    },
-    "WETH/DAI": {
-        "address": "0xC3D03e4F041Fd4cD388c549Ee2A29a9E5075882f",
-        "token0": "DAI",
-        "token1": "WETH",
-    },
-    "WBTC/WETH": {
-        "address": "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58",
-        "token0": "WBTC",
-        "token1": "WETH",
-    },
-}
-
-# Uniswap V3 Quoter contract address on mainnet
-UNISWAP_V3_QUOTER = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
-
-# Minimal ABI for Uniswap V3 Quoter
-UNISWAP_V3_QUOTER_ABI = [
-    {
-        "inputs": [
-            {"internalType": "address", "name": "tokenIn", "type": "address"},
-            {"internalType": "address", "name": "tokenOut", "type": "address"},
-            {"internalType": "uint24", "name": "fee", "type": "uint24"},
-            {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
-            {"internalType": "uint160", "name": "sqrtPriceLimitX96", "type": "uint160"},
-        ],
-        "name": "quoteExactInputSingle",
-        "outputs": [
-            {"internalType": "uint256", "name": "amountOut", "type": "uint256"}
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function",
-    }
-]
-
-# Minimal ABI for SushiSwap V2 pools
-SUSHISWAP_POOL_ABI = [
-    {
-        "name": "getReserves",
-        "outputs": [
-            {"internalType": "uint112", "name": "_reserve0", "type": "uint112"},
-            {"internalType": "uint112", "name": "_reserve1", "type": "uint112"},
-            {"internalType": "uint32", "name": "_blockTimestampLast", "type": "uint32"},
-        ],
-        "stateMutability": "view",
-        "type": "function",
-        "inputs": [],
-    },
-    {
-        "name": "token0",
-        "outputs": [{"type": "address", "name": ""}],
-        "stateMutability": "view",
-        "type": "function",
-        "inputs": [],
-    },
-    {
-        "name": "token1",
-        "outputs": [{"type": "address", "name": ""}],
-        "stateMutability": "view",
-        "type": "function",
-        "inputs": [],
-    },
-]
+from ..config_loader import get_config, get_config_loader
 
 
 def get_token_decimals(token_symbol: str) -> int:
-    """Get decimals for a token."""
-    decimals_map = {
-        "USDC": 6,
-        "USDT": 6,
-        "WETH": 18,
-        "ETH": 18,
-        "WBTC": 8,
-        "DAI": 18,
-        "UNI": 18,
-        "AAVE": 18,
-        "LINK": 18,
-        "MKR": 18,
-    }
-    return decimals_map.get(token_symbol.upper(), 18)
+    """Get decimals for a token from configuration."""
+    config = get_config()
+    token = config.tokens.get(token_symbol.upper())
+    return token.decimals if token else 18
 
 
 def find_uniswap_pool(from_token: str, to_token: str) -> dict | None:
-    """Find Uniswap V3 pool for a token pair."""
+    """Find Uniswap V3 pool for a token pair from configuration."""
     # Normalize token symbols
     from_token = from_token.upper()
     to_token = to_token.upper()
@@ -167,27 +25,32 @@ def find_uniswap_pool(from_token: str, to_token: str) -> dict | None:
     if to_token == "ETH":
         to_token = "WETH"
 
-    # Check both orderings
-    pair1 = f"{from_token}/{to_token}"
-    pair2 = f"{to_token}/{from_token}"
+    # Get pool from configuration
+    loader = get_config_loader()
 
-    for pair_key, pool_info in UNISWAP_V3_POOLS.items():
-        if pair_key == pair1 or pair_key == pair2:
-            return pool_info
+    # Try both token orderings
+    pool = loader.get_pool("uniswap_v3", from_token, to_token)
+    if pool:
+        return {
+            "address": pool.address,
+            "fee": pool.fee,
+            "token0": pool.token0,
+            "token1": pool.token1,
+        }
 
     return None
 
 
 @tool
 def get_uniswap_v3_price(
-    from_token: str, to_token: str, rpc_url: str = "https://eth.llamarpc.com"
+    from_token: str, to_token: str, rpc_url: str | None = None
 ) -> str:
     """Get token price from Uniswap V3 using the Quoter contract.
 
     Args:
         from_token: Source token symbol
         to_token: Destination token symbol
-        rpc_url: Ethereum RPC endpoint
+        rpc_url: Ethereum RPC endpoint (optional, uses config default)
 
     Returns:
         Current price from Uniswap V3
@@ -197,23 +60,48 @@ def get_uniswap_v3_price(
         if not pool_info:
             return f"No Uniswap V3 pool found for {from_token}/{to_token}"
 
+        # Get configuration
+        config = get_config()
+        loader = get_config_loader()
+
+        # Get RPC URL from config if not provided
+        if rpc_url is None:
+            rpc_url = config.default_chain.rpc_url
+
         # Connect to web3
         w3 = Web3(Web3.HTTPProvider(rpc_url))
         if not w3.is_connected():
             return "Error: Could not connect to Ethereum network"
 
         # Get the Quoter contract
-        quoter = w3.eth.contract(address=UNISWAP_V3_QUOTER, abi=UNISWAP_V3_QUOTER_ABI)
+        uniswap_config = config.dexes.get("uniswap_v3")
+        if not uniswap_config or not uniswap_config.quoter_address:
+            return "Error: Uniswap V3 Quoter address not configured"
 
-        # Convert token symbols to addresses
-        from_address = POPULAR_TOKENS.get(from_token.upper(), from_token)
-        to_address = POPULAR_TOKENS.get(to_token.upper(), to_token)
+        # Find the quoter ABI from contracts
+        quoter_abi = None
+        for contract in uniswap_config.contracts:
+            if contract.name == "Quoter":
+                quoter_abi = contract.abi
+                break
+
+        if not quoter_abi:
+            return "Error: Uniswap V3 Quoter ABI not configured"
+
+        quoter = w3.eth.contract(address=uniswap_config.quoter_address, abi=quoter_abi)
+
+        # Get token addresses from config
+        from_address = loader.get_token_address(from_token.upper())
+        to_address = loader.get_token_address(to_token.upper())
+
+        if not from_address or not to_address:
+            return f"Error: Token address not found in configuration for {from_token} or {to_token}"
 
         # Use WETH address for ETH
-        if from_address == POPULAR_TOKENS["ETH"]:
-            from_address = POPULAR_TOKENS["WETH"]
-        if to_address == POPULAR_TOKENS["ETH"]:
-            to_address = POPULAR_TOKENS["WETH"]
+        if from_token.upper() == "ETH":
+            from_address = loader.get_token_address("WETH")
+        if to_token.upper() == "ETH":
+            to_address = loader.get_token_address("WETH")
 
         # Amount to quote (1 token of from_token)
         from_decimals = get_token_decimals(from_token)
@@ -263,7 +151,7 @@ def get_uniswap_v3_price(
 
 
 def find_sushiswap_pool(from_token: str, to_token: str) -> dict | None:
-    """Find SushiSwap pool for a token pair."""
+    """Find SushiSwap pool for a token pair from configuration."""
     # Normalize token symbols
     from_token = from_token.upper()
     to_token = to_token.upper()
@@ -274,27 +162,26 @@ def find_sushiswap_pool(from_token: str, to_token: str) -> dict | None:
     if to_token == "ETH":
         to_token = "WETH"
 
-    # Check both orderings
-    pair1 = f"{from_token}/{to_token}"
-    pair2 = f"{to_token}/{from_token}"
+    # Get pool from configuration
+    loader = get_config_loader()
+    pool = loader.get_pool("sushiswap", from_token, to_token)
 
-    for pair_key, pool_info in SUSHISWAP_POOLS.items():
-        if pair_key == pair1 or pair_key == pair2:
-            return pool_info
+    if pool:
+        return {"address": pool.address, "token0": pool.token0, "token1": pool.token1}
 
     return None
 
 
 @tool
 def get_sushiswap_price(
-    from_token: str, to_token: str, rpc_url: str = "https://eth.llamarpc.com"
+    from_token: str, to_token: str, rpc_url: str | None = None
 ) -> str:
     """Get token price directly from SushiSwap pool contract.
 
     Args:
         from_token: Source token symbol
         to_token: Destination token symbol
-        rpc_url: Ethereum RPC endpoint
+        rpc_url: Ethereum RPC endpoint (optional, uses config default)
 
     Returns:
         Current price from SushiSwap
@@ -304,13 +191,34 @@ def get_sushiswap_price(
         if not pool_info:
             return f"No SushiSwap pool found for {from_token}/{to_token}"
 
+        # Get configuration
+        config = get_config()
+
+        # Get RPC URL from config if not provided
+        if rpc_url is None:
+            rpc_url = config.default_chain.rpc_url
+
         # Connect to web3
         w3 = Web3(Web3.HTTPProvider(rpc_url))
         if not w3.is_connected():
             return "Error: Could not connect to Ethereum network"
 
+        # Get pool ABI from config
+        sushi_config = config.dexes.get("sushiswap")
+        if not sushi_config:
+            return "Error: SushiSwap configuration not found"
+
+        pool_abi = None
+        for contract in sushi_config.contracts:
+            if contract.name == "Pool":
+                pool_abi = contract.abi
+                break
+
+        if not pool_abi:
+            return "Error: SushiSwap pool ABI not configured"
+
         # Get pool contract
-        pool = w3.eth.contract(address=pool_info["address"], abi=SUSHISWAP_POOL_ABI)
+        pool = w3.eth.contract(address=pool_info["address"], abi=pool_abi)
 
         # Get reserves
         reserves = pool.functions.getReserves().call()

@@ -1,0 +1,268 @@
+# DEX configurations
+uniswap_v3:
+  name: "Uniswap V3"
+  quoter_address: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
+  contracts:
+    - address: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
+      name: "Quoter"
+      abi:
+        - inputs:
+            - internalType: "address"
+              name: "tokenIn"
+              type: "address"
+            - internalType: "address"
+              name: "tokenOut"
+              type: "address"
+            - internalType: "uint24"
+              name: "fee"
+              type: "uint24"
+            - internalType: "uint256"
+              name: "amountIn"
+              type: "uint256"
+            - internalType: "uint160"
+              name: "sqrtPriceLimitX96"
+              type: "uint160"
+          name: "quoteExactInputSingle"
+          outputs:
+            - internalType: "uint256"
+              name: "amountOut"
+              type: "uint256"
+          stateMutability: "nonpayable"
+          type: "function"
+  pools:
+    # WETH/USDC pools
+    - address: "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"
+      token0: "USDC"
+      token1: "WETH"
+      fee: 500
+      dex: "uniswap_v3"
+    - address: "0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8"
+      token0: "USDC"
+      token1: "WETH"
+      fee: 3000
+      dex: "uniswap_v3"
+    # WETH/USDT pools
+    - address: "0x11b815efB8f581194ae79006d24E0d814B7697F6"
+      token0: "WETH"
+      token1: "USDT"
+      fee: 500
+      dex: "uniswap_v3"
+    - address: "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36"
+      token0: "WETH"
+      token1: "USDT"
+      fee: 3000
+      dex: "uniswap_v3"
+    # WETH/DAI pools
+    - address: "0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8"
+      token0: "DAI"
+      token1: "WETH"
+      fee: 3000
+      dex: "uniswap_v3"
+    - address: "0x60594a405d53811d3BC4766596EFD80fd545A270"
+      token0: "DAI"
+      token1: "WETH"
+      fee: 500
+      dex: "uniswap_v3"
+    # USDC/USDT pools
+    - address: "0x7858E59e0C01EA06Df3aF3D20aC7B0003275D4Bf"
+      token0: "USDC"
+      token1: "USDT"
+      fee: 500
+      dex: "uniswap_v3"
+    - address: "0x3416cF6C708Da44DB2624D63ea0AAef7113527C6"
+      token0: "USDC"
+      token1: "USDT"
+      fee: 100
+      dex: "uniswap_v3"
+    # USDC/DAI pools
+    - address: "0x5777d92f208679DB4b9778590Fa3CAB3aC9e2168"
+      token0: "DAI"
+      token1: "USDC"
+      fee: 100
+      dex: "uniswap_v3"
+    - address: "0x6c6Bc977E13Df9b0de53b251522280BB72383700"
+      token0: "DAI"
+      token1: "USDC"
+      fee: 500
+      dex: "uniswap_v3"
+    # DAI/USDT pool
+    - address: "0x5e5C517Ec55d6393d91d6A1379e5Ae393A01a423"
+      token0: "DAI"
+      token1: "USDT"
+      fee: 100
+      dex: "uniswap_v3"
+
+sushiswap:
+  name: "SushiSwap"
+  contracts:
+    - address: "0x0000000000000000000000000000000000000000"  # Placeholder for pool ABI
+      name: "Pool"
+      abi:
+        - inputs: []
+          name: "getReserves"
+          outputs:
+            - internalType: "uint112"
+              name: "_reserve0"
+              type: "uint112"
+            - internalType: "uint112"
+              name: "_reserve1"
+              type: "uint112"
+            - internalType: "uint32"
+              name: "_blockTimestampLast"
+              type: "uint32"
+          stateMutability: "view"
+          type: "function"
+        - inputs: []
+          name: "token0"
+          outputs:
+            - internalType: "address"
+              name: ""
+              type: "address"
+          stateMutability: "view"
+          type: "function"
+        - inputs: []
+          name: "token1"
+          outputs:
+            - internalType: "address"
+              name: ""
+              type: "address"
+          stateMutability: "view"
+          type: "function"
+  pools:
+    - address: "0x06da0fd433C1A5d7a4faa01111c044910A184553"
+      token0: "WETH"
+      token1: "USDT"
+      dex: "sushiswap"
+    - address: "0x397FF1542f962076d0BFE58eA045FfA2d347ACa0"
+      token0: "USDC"
+      token1: "WETH"
+      dex: "sushiswap"
+    - address: "0xC3D03e4F041Fd4cD388c549Ee2A29a9E5075882f"
+      token0: "DAI"
+      token1: "WETH"
+      dex: "sushiswap"
+    - address: "0x680A025dA7b1be2c204D7745e809919bCE074026"
+      token0: "USDC"
+      token1: "USDT"
+      dex: "sushiswap"
+    - address: "0xAaF5110db6e744ff70fB339DE037B990A20bdace"
+      token0: "DAI"
+      token1: "USDC"
+      dex: "sushiswap"
+
+curve:
+  name: "Curve Finance"
+  router_address: "0x1338397B6794DE5cc08a4a27E7960e86b72a7b95"
+  contracts:
+    - address: "0x1338397B6794DE5cc08a4a27E7960e86b72a7b95"
+      name: "Router NG"
+      abi:
+        - inputs:
+            - internalType: "address"
+              name: "_pool"
+              type: "address"
+            - internalType: "int128"
+              name: "_from"
+              type: "int128"
+            - internalType: "int128"
+              name: "_to"
+              type: "int128"
+            - internalType: "uint256"
+              name: "_amount"
+              type: "uint256"
+          name: "get_exchange_amount"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
+        - inputs:
+            - internalType: "address"
+              name: "_pool"
+              type: "address"
+            - internalType: "int128"
+              name: "_from"
+              type: "int128"
+            - internalType: "int128"
+              name: "_to"
+              type: "int128"
+            - internalType: "uint256"
+              name: "_amount"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "_expected"
+              type: "uint256"
+            - internalType: "address"
+              name: "_receiver"
+              type: "address"
+          name: "exchange"
+          outputs:
+            - internalType: "uint256"
+              name: ""
+              type: "uint256"
+          stateMutability: "payable"
+          type: "function"
+  pools:
+    - address: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
+      token0: "DAI"
+      token1: "USDC"
+      dex: "curve"
+    - address: "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2"
+      token0: "FRAX"
+      token1: "USDC"
+      dex: "curve"
+    - address: "0x4eBdF703948ddCEA3B11f675B4D1Fba9d2414A14"
+      token0: "USDC"
+      token1: "USDT"
+      dex: "curve"
+
+maverick:
+  name: "Maverick Protocol"
+  factory_address: "0xEb6625D65a0553c9dBc64449e56abFe519bd9c9B"
+  contracts:
+    - address: "0x0000000000000000000000000000000000000000"  # Placeholder for pool ABI
+      name: "Pool"
+      abi:
+        - inputs:
+            - internalType: "uint256"
+              name: "amount"
+              type: "uint256"
+            - internalType: "bool"
+              name: "tokenAIn"
+              type: "bool"
+            - internalType: "bool"
+              name: "exactOutput"
+              type: "bool"
+            - internalType: "uint256"
+              name: "sqrtPriceLimit"
+              type: "uint256"
+          name: "calculateSwap"
+          outputs:
+            - internalType: "uint256"
+              name: "returnAmount"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "sqrtPriceX96Next"
+              type: "uint256"
+            - internalType: "uint256"
+              name: "sqrtPriceAvgX96"
+              type: "uint256"
+          stateMutability: "view"
+          type: "function"
+        - inputs: []
+          name: "tokenA"
+          outputs:
+            - internalType: "address"
+              name: ""
+              type: "address"
+          stateMutability: "view"
+          type: "function"
+        - inputs: []
+          name: "tokenB"
+          outputs:
+            - internalType: "address"
+              name: ""
+              type: "address"
+          stateMutability: "view"
+          type: "function"

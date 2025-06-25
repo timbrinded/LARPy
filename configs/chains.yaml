@@ -1,0 +1,17 @@
+# Blockchain network configurations
+ethereum:
+  name: "Ethereum"
+  chain_id: 1
+  rpc_url: "https://eth.llamarpc.com"
+  explorer_url: "https://etherscan.io"
+  native_token: "ETH"
+  block_time: 12.0
+
+# Add more chains as needed
+# polygon:
+#   name: "Polygon"
+#   chain_id: 137
+#   rpc_url: "https://polygon-rpc.com"
+#   explorer_url: "https://polygonscan.com"
+#   native_token: "MATIC"
+#   block_time: 2.0
