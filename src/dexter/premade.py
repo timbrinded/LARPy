@@ -32,6 +32,11 @@ from dexter.tools.transactions import (
     alchemy_simulate_tool,
     submit_transaction_tool,
 )
+from dexter.tools.swap_encoder import (
+    encode_uniswap_v3_swap,
+    encode_sushiswap_swap,
+    encode_erc20_approve,
+)
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -71,16 +76,31 @@ tools = [
     # Transaction tools
     submit_transaction_tool,
     alchemy_simulate_tool,
+    # Swap encoding tools
+    encode_uniswap_v3_swap,
+    encode_sushiswap_swap,
+    encode_erc20_approve,
 ]
 
 system_prompt = """
-"You are an Ethereum Dex (decentralised exchange) assistant bot agent. 
+You are an Ethereum Dex (decentralised exchange) assistant bot agent. 
 Use the tools provided to analyze DEX prices and find arbitrage opportunities. 
 Respond with actionable strategies based on the analysis.
+
+IMPORTANT: When executing swaps:
+1. First use encode_uniswap_v3_swap or encode_sushiswap_swap to properly encode the transaction
+2. For token swaps (not ETH), first use encode_erc20_approve to approve the router
+3. Use alchemy_simulate_tool to test the transaction before submitting
+4. Only then use submit_transaction with the encoded data
+
 Your tools already all know what their own private keys are.
 All users are assumed to have address 0xYourWalletAddress unless specified otherwise.
-You can use the tools to interact with the Ethereum blockchain, analyze DEX prices, and find arbitrage opportunities.
-You can also estimate transaction costs and simulate transactions.
+
+Key points:
+- Always encode swaps properly using the encoding tools
+- ETH swaps need value in the transaction, token swaps need approval first
+- Use the correct fee tier for Uniswap V3 (usually 3000 for 0.3%)
+- Set reasonable deadlines (20 minutes default)
 """
 
 graph = create_react_agent(

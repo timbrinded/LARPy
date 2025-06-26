@@ -28,6 +28,7 @@ common_abis:
       type: "function"
 uniswap_v3:
   name: "Uniswap V3"
+  router_address: "0xE592427A0AEce92De3Edee1F18E0157C05861564"
   factory_address: "0x1f98431c8ad98523631ae4a59f267346ea31f984"
   quoter_address: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
   contracts:
@@ -122,6 +123,7 @@ uniswap_v3:
 
 sushiswap:
   name: "SushiSwap"
+  router_address: "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
   contracts:
     - address: "0x0000000000000000000000000000000000000000"  # Placeholder for pool ABI
       name: "Pool"

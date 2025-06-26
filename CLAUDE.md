@@ -248,6 +248,11 @@ This allows safe testing of arbitrage strategies without using real funds.
    - `calculate_arbitrage_profit` - Calculate potential profits
    - `find_triangular_arbitrage` - Find multi-hop opportunities
 
+5. **Swap Encoding Tools** (`src/dexter/tools/swap_encoder.py`)
+   - `encode_uniswap_v3_swap` - Properly encode Uniswap V3 swap transactions
+   - `encode_sushiswap_swap` - Encode SushiSwap transactions
+   - `encode_erc20_approve` - Encode token approval transactions
+
 ### Environment Variables for Blockchain
 
 Required in `.env`:
@@ -266,6 +271,37 @@ ETHERSCAN_API_KEY=your_etherscan_key # For blockchain data
 5. **Handle errors gracefully** - All tools return structured error responses
 
 ### Common Workflows
+
+#### Executing a DEX Swap Properly
+```python
+# 1. Get current prices
+prices = get_all_dex_prices("ETH", "USDC", "1")
+
+# 2. Encode the swap transaction
+swap_data = encode_uniswap_v3_swap(
+    token_in="ETH",
+    token_out="USDC", 
+    amount_in="1000000000000000000",  # 1 ETH in wei
+    recipient="0xYourWalletAddress",
+    fee_tier=3000  # 0.3% fee tier
+)
+
+# 3. Simulate the transaction
+simulation = alchemy_simulate_asset_changes(
+    to_address=swap_data["to"],
+    data=swap_data["data"],
+    value=swap_data["value"],
+    from_address="0xYourWalletAddress"
+)
+
+# 4. If simulation successful, submit
+if simulation["success"]:
+    result = submit_transaction(
+        to_address=swap_data["to"],
+        data=swap_data["data"],
+        value=swap_data["value"]
+    )
+```
 
 #### Finding and Executing Arbitrage
 ```python

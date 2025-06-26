@@ -32,6 +32,12 @@ from .transactions import (
     submit_transaction_tool,
     transaction_tools,
 )
+from .swap_encoder import (
+    encode_uniswap_v3_swap,
+    encode_sushiswap_swap,
+    encode_erc20_approve,
+    swap_encoding_tools,
+)
 
 __all__ = [
     # Arbitrage tools
@@ -62,4 +68,9 @@ __all__ = [
     "alchemy_simulate_tool",
     "submit_transaction_tool",
     "transaction_tools",
+    # Swap encoding tools
+    "encode_uniswap_v3_swap",
+    "encode_sushiswap_swap",
+    "encode_erc20_approve",
+    "swap_encoding_tools",
 ]
