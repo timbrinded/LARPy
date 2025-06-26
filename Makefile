@@ -56,6 +56,13 @@ spell_fix:
 # HELP
 ######################
 
+######################
+# DEVELOPMENT
+######################
+
+dev_anvil:
+	@./scripts/run_with_anvil.sh
+
 help:
 	@echo '----'
 	@echo 'format                       - run code formatters'
@@ -64,4 +71,5 @@ help:
 	@echo 'tests                        - run unit tests'
 	@echo 'test TEST_FILE=<test_file>   - run all tests in file'
 	@echo 'test_watch                   - run unit tests in watch mode'
+	@echo 'dev_anvil                    - run LangGraph with Anvil fork + funded agent'
 

@@ -1,5 +1,6 @@
 """Blockchain tools for interacting with Ethereum with config support."""
 
+import os
 from typing import Dict, List, Union
 
 from eth_typing import HexStr
@@ -40,6 +41,33 @@ class GetBlockInput(BaseModel):
 
     block_number: Union[int, str] = Field(
         default="latest", description="Block number or 'latest', 'pending', 'earliest'"
+    )
+    rpc_url: str | None = Field(
+        default=None,
+        description="RPC URL to use. If not provided, uses default from config",
+    )
+
+
+class EthCallInput(BaseModel):
+    """Input for eth_call with state override support."""
+
+    to_address: str = Field(description="Contract address to call")
+    data: str = Field(description="Encoded function call data (hex string)")
+    from_address: str | None = Field(
+        default=None,
+        description="Address to call from (optional)",
+    )
+    block_number: Union[int, str] = Field(
+        default="latest",
+        description="Block number or 'latest', 'pending', 'earliest'",
+    )
+    state_overrides: Dict[str, Dict[str, str]] | None = Field(
+        default=None,
+        description=(
+            "State overrides as a dict of address -> state changes. "
+            "Each address can have: balance (wei), nonce, code, state (storage slots). "
+            "Example: {'0xAddress': {'balance': '0x1234', 'state': {'0x0': '0x5678'}}}"
+        ),
     )
     rpc_url: str | None = Field(
         default=None,
@@ -98,7 +126,24 @@ def get_erc20_abi():
 def get_balance(
     address: str, token_address: str | None = None, rpc_url: str | None = None
 ) -> Dict[str, Union[str, float]]:
-    """Get ETH or token balance for an address using configuration."""
+    """Get ETH or token balance for an address using configuration.
+    
+    Special handling: if address is "0xYourWalletAddress", it will use the 
+    agent's address derived from AGENT_ETH_KEY environment variable.
+    """
+    # Handle special "0xYourWalletAddress" keyword
+    if address.lower() == "0xyourwalletaddress":
+        private_key = os.getenv("AGENT_ETH_KEY")
+        if not private_key:
+            return {"error": "AGENT_ETH_KEY not found in environment"}
+        try:
+            # Derive address from private key
+            temp_w3 = Web3()
+            account = temp_w3.eth.account.from_key(private_key)
+            address = account.address
+        except Exception as e:
+            return {"error": f"Invalid private key in AGENT_ETH_KEY: {str(e)}"}
+    
     # Get RPC URL from config if not provided
     if rpc_url is None:
         config = get_config()
@@ -293,6 +338,142 @@ def estimate_gas(
         return {"error": str(e)}
 
 
+def eth_call(
+    to_address: str,
+    data: str,
+    from_address: str | None = None,
+    block_number: Union[int, str] = "latest",
+    state_overrides: Dict[str, Dict[str, str]] | None = None,
+    rpc_url: str | None = None,
+) -> Dict[str, Union[str, Dict]]:
+    """Execute eth_call to read contract state with optional state overrides.
+    
+    This is useful for:
+    - Reading contract state without sending a transaction
+    - Simulating contract calls with modified state
+    - Testing "what if" scenarios by overriding balances, storage, etc.
+    
+    State overrides allow you to modify:
+    - balance: Set ETH balance for an address
+    - nonce: Set transaction count
+    - code: Replace contract bytecode
+    - state: Override specific storage slots
+    
+    Special handling: if from_address is "0xYourWalletAddress", it will use the 
+    agent's address derived from AGENT_ETH_KEY environment variable.
+    """
+    # Handle special "0xYourWalletAddress" keyword for from_address
+    if from_address and from_address.lower() == "0xyourwalletaddress":
+        private_key = os.getenv("AGENT_ETH_KEY")
+        if not private_key:
+            return {"success": False, "error": "AGENT_ETH_KEY not found in environment"}
+        try:
+            # Derive address from private key
+            temp_w3 = Web3()
+            account = temp_w3.eth.account.from_key(private_key)
+            from_address = account.address
+        except Exception as e:
+            return {"success": False, "error": f"Invalid private key in AGENT_ETH_KEY: {str(e)}"}
+    # Get RPC URL from config if not provided
+    if rpc_url is None:
+        config = get_config()
+        rpc_url = config.default_chain.rpc_url
+
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+
+    if not w3.is_connected():
+        return {"error": "Failed to connect to Ethereum node"}
+
+    try:
+        to_address = w3.to_checksum_address(to_address)
+        
+        # Build the call parameters
+        call_params = {
+            "to": to_address,
+            "data": data,
+        }
+        
+        if from_address:
+            call_params["from"] = w3.to_checksum_address(from_address)
+        
+        # Handle state overrides if provided
+        if state_overrides:
+            # Convert addresses to checksum format and ensure proper hex formatting
+            formatted_overrides = {}
+            for addr, overrides in state_overrides.items():
+                # Handle special "0xYourWalletAddress" in state overrides
+                if addr.lower() == "0xyourwalletaddress":
+                    if not from_address:
+                        # Need to derive it again if not already done
+                        private_key = os.getenv("AGENT_ETH_KEY")
+                        if private_key:
+                            try:
+                                account = w3.eth.account.from_key(private_key)
+                                addr = account.address
+                            except Exception:
+                                pass  # Use the original address if derivation fails
+                    else:
+                        # Use the already derived from_address
+                        addr = from_address
+                
+                checksummed_addr = w3.to_checksum_address(addr)
+                formatted_overrides[checksummed_addr] = {}
+                
+                for key, value in overrides.items():
+                    if key == "balance":
+                        # Ensure balance is hex
+                        if isinstance(value, int):
+                            formatted_overrides[checksummed_addr][key] = hex(value)
+                        else:
+                            formatted_overrides[checksummed_addr][key] = value
+                    elif key == "nonce":
+                        # Ensure nonce is hex
+                        if isinstance(value, int):
+                            formatted_overrides[checksummed_addr][key] = hex(value)
+                        else:
+                            formatted_overrides[checksummed_addr][key] = value
+                    elif key == "code":
+                        # Code should be hex string
+                        formatted_overrides[checksummed_addr][key] = value
+                    elif key == "state":
+                        # State is a dict of storage slot -> value
+                        formatted_state = {}
+                        for slot, slot_value in value.items():
+                            # Ensure slot and value are properly formatted hex
+                            if not slot.startswith("0x"):
+                                slot = "0x" + slot
+                            if isinstance(slot_value, int):
+                                slot_value = hex(slot_value)
+                            elif not slot_value.startswith("0x"):
+                                slot_value = "0x" + slot_value
+                            formatted_state[slot] = slot_value
+                        formatted_overrides[checksummed_addr][key] = formatted_state
+                    else:
+                        formatted_overrides[checksummed_addr][key] = value
+            
+            # Make the call with state overrides
+            result = w3.eth.call(call_params, block_number, formatted_overrides)
+        else:
+            # Make the call without state overrides
+            result = w3.eth.call(call_params, block_number)
+        
+        return {
+            "success": True,
+            "result": "0x" + result.hex(),
+            "to": to_address,
+            "data": data,
+            "block": block_number,
+            "state_overrides": state_overrides if state_overrides else None,
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+        }
+
+
 # Create the tools
 get_balance_tool = StructuredTool(
     name="get_balance",
@@ -320,6 +501,17 @@ estimate_gas_tool = StructuredTool(
     description="Estimate gas for a transaction. Uses configuration for RPC URL.",
     func=lambda **kwargs: estimate_gas(**kwargs),
     args_schema=EstimateGasInput,
+)
+
+eth_call_tool = StructuredTool(
+    name="eth_call",
+    description=(
+        "Execute eth_call to read contract state with optional state overrides. "
+        "Useful for reading contract data, simulating calls with modified state, "
+        "and testing 'what if' scenarios by overriding balances, storage, etc."
+    ),
+    func=lambda **kwargs: eth_call(**kwargs),
+    args_schema=EthCallInput,
 )
 
 
@@ -395,4 +587,5 @@ blockchain_tools = [
     get_transaction_tool,
     get_block_tool,
     estimate_gas_tool,
+    eth_call_tool,
 ]

@@ -73,8 +73,16 @@ tools = [
     alchemy_simulate_tool,
 ]
 
+system_prompt = """
+"You are an Ethereum Dex (decentralised exchange) assistant bot agent. 
+Use the tools provided to analyze DEX prices and find arbitrage opportunities. 
+Respond with actionable strategies based on the analysis.
+Your tools already all know what their own private keys are.
+You and the user have exactly the same wallet private keys.
+"""
+
 graph = create_react_agent(
     model=model,
     tools=tools,
-    prompt="You are an Ethereum Dex (decentralised exchange) assistant bot agent. Use the tools provided to analyze DEX prices and find arbitrage opportunities. Respond with actionable strategies based on the analysis.",
+    prompt=system_prompt
 )
