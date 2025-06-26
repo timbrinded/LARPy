@@ -10,7 +10,6 @@ import requests
 from dotenv import load_dotenv
 from web3 import Web3
 
-# Load environment variables from .env file
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -48,10 +47,8 @@ class ABIFetcher:
         Returns:
             The contract ABI as a list of dicts, or None if not found
         """
-        # Normalize address
         address = Web3.to_checksum_address(contract_address)
 
-        # Check cache first
         cache_file = self.cache_dir / f"{address.lower()}.json"
         if not force_refresh and cache_file.exists():
             try:
@@ -60,10 +57,8 @@ class ABIFetcher:
             except Exception:
                 pass
 
-        # Fetch from Etherscan
         abi = self._fetch_from_etherscan(address)
 
-        # Cache the result
         if abi:
             try:
                 with open(cache_file, "w") as f:
@@ -237,7 +232,6 @@ class ABIFetcher:
         ]
 
 
-# Global instance
 _abi_fetcher = None
 
 

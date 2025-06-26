@@ -59,6 +59,9 @@ class DexConfig(BaseModel):
     quoter_address: str | None = None
     views_address: str | None = None  # For Curve Stableswap-NG Views contract
     registry_address: str | None = None  # For Curve main registry
+    liquidity_address: str | None = None  # For Fluid liquidity contract
+    resolver_address: str | None = None  # For Fluid resolver contract
+    reserves_resolver_address: str | None = None  # For Fluid reserves resolver
     pools: List[PoolConfig] = []
     contracts: List[ContractConfig] = []
 
