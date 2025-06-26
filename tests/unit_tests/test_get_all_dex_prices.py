@@ -1,6 +1,6 @@
 """Test get_all_dex_prices includes Curve."""
 
-from agent.tools.dex_prices import get_all_dex_prices
+from dexter.tools.dex_prices import get_all_dex_prices
 
 
 class TestGetAllDexPrices:

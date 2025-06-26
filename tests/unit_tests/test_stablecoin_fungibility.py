@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from agent.tools.dex_prices import (
+from dexter.tools.dex_prices import (
     get_all_dex_prices_with_stablecoin_fungibility,
     get_stablecoin_substitutes,
 )

@@ -1,6 +1,6 @@
 """Test that Curve can find ETH/USDC pools in configuration."""
 
-from agent.config_loader import get_config
+from dexter.config_loader import get_config
 
 
 class TestCurveETHUSDCConfig:

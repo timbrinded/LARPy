@@ -1,6 +1,6 @@
 from langgraph.pregel import Pregel
 
-from agent.premade import graph
+from dexter.premade import graph
 
 
 def test_placeholder() -> None:

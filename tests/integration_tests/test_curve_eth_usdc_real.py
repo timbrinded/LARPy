@@ -1,6 +1,6 @@
 """Integration test to verify Curve ETH/USDC actually works with real config."""
 
-from agent.tools.dex_prices import get_curve_price
+from dexter.tools.dex_prices import get_curve_price
 
 
 class TestCurveETHUSDCReal:

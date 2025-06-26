@@ -5,20 +5,20 @@ import logging
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
-from agent.config_loader import get_config
-from agent.tools.arbitrage import (
+from dexter.config_loader import get_config
+from dexter.tools.arbitrage import (
     analyze_token_pair_opportunities,
     calculate_profit,
     find_arbitrage_opportunities,
     format_arbitrage_strategy,
 )
-from agent.tools.blockchain import (
+from dexter.tools.blockchain import (
     estimate_transaction_cost,
     get_eth_balance,
     get_gas_price,
     get_token_balance,
 )
-from agent.tools.dex_prices import (
+from dexter.tools.dex_prices import (
     discover_curve_pools,
     get_all_dex_prices,
     get_all_dex_prices_extended,
@@ -66,4 +66,8 @@ tools = [
     analyze_token_pair_opportunities,
 ]
 
-graph = create_react_agent(model=model, tools=tools)
+graph = create_react_agent(
+            model=model,
+            tools=tools,
+            prompt="You are an Ethereum Dex (decentralised exchange) assistant bot agent. Use the tools provided to analyze DEX prices and find arbitrage opportunities. Respond with actionable strategies based on the analysis.",
+        )

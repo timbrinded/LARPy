@@ -7,7 +7,7 @@ class TestCurveTriCrypto:
     def test_curve_tricrypto_eth_usdc_configured(self):
         """Test that TriCryptoUSDC pool is properly configured."""
         # Import config to check
-        from agent.config_loader import get_config
+        from dexter.config_loader import get_config
 
         config = get_config()
         curve_config = config.dexes.get("curve")

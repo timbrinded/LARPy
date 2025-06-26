@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from agent.tools.dex_prices import (
+from dexter.tools.dex_prices import (
     get_all_dex_prices_extended,
     get_curve_price,
     get_fluid_dex_price,
@@ -23,7 +23,7 @@ class TestCurvePrices:
     def test_get_curve_price_usdc_usdt_real(self):
         """Test getting USDC/USDT price from real Curve pools."""
         # Force reload config to pick up any changes
-        from agent.config_loader import get_config_loader
+        from dexter.config_loader import get_config_loader
 
         loader = get_config_loader()
         loader.reload()
