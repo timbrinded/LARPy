@@ -183,11 +183,11 @@ class TestFluidDexPrices:
         # Test with ETH (should internally convert to WETH)
         result_eth = get_fluid_dex_price.func("ETH", "USDC")
         assert isinstance(result_eth, str)
-        
+
         # Test with WETH directly
         result_weth = get_fluid_dex_price.func("WETH", "USDC")
         assert isinstance(result_weth, str)
-        
+
         # Both should return similar results (either both find pools or both don't)
         if "No Fluid pools found" in result_weth:
             assert "No Fluid pools found" in result_eth

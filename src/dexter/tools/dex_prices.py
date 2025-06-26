@@ -1031,9 +1031,11 @@ def get_fluid_dex_price(
         abi_fetcher = get_abi_fetcher()
 
         # Normalize token symbols - convert ETH to WETH for internal lookups
-        from_token_normalized = "WETH" if from_token.upper() == "ETH" else from_token.upper()
+        from_token_normalized = (
+            "WETH" if from_token.upper() == "ETH" else from_token.upper()
+        )
         to_token_normalized = "WETH" if to_token.upper() == "ETH" else to_token.upper()
-        
+
         # Get token addresses
         from_address = loader.get_token_address(from_token_normalized)
         to_address = loader.get_token_address(to_token_normalized)
@@ -1051,7 +1053,7 @@ def get_fluid_dex_price(
 
         # Try to fetch resolver ABI dynamically
         resolver_abi = abi_fetcher.get_abi(fluid_config.resolver_address)
-        
+
         if not resolver_abi:
             # Fall back to config ABI if dynamic fetch fails
             resolver_contract = None
@@ -1123,7 +1125,9 @@ def get_fluid_dex_price(
 
                         if token0_reserves > 0 and token1_reserves > 0:
                             # Get token decimals - use normalized symbols
-                            from_decimals = loader.get_token_decimals(from_token_normalized)
+                            from_decimals = loader.get_token_decimals(
+                                from_token_normalized
+                            )
                             to_decimals = loader.get_token_decimals(to_token_normalized)
 
                             # Calculate price based on reserves
@@ -1160,43 +1164,47 @@ def get_fluid_dex_price(
                 # Instead of using reserves, use estimateSwapIn to get actual swap price
                 best_price = None
                 best_pool_address = None
-                
+
                 for pool_info in found_pools:
                     try:
                         pool_address = pool_info["pool"]
-                        
+
                         # Determine swap direction
-                        pool_data = resolver.functions.getDexEntireData(pool_address).call()
+                        pool_data = resolver.functions.getDexEntireData(
+                            pool_address
+                        ).call()
                         constant_views = pool_data[1]
                         token0 = constant_views[5]
                         token1 = constant_views[6]
-                        
+
                         # Check if we need to swap 0->1 or 1->0
                         swap0to1 = token0.lower() == from_address.lower()
-                        
+
                         # Calculate price using estimateSwapIn for 1 unit
                         amount_in = 10 ** loader.get_token_decimals(from_token)
-                        
+
                         # Call estimateSwapIn on the resolver
                         amount_out = resolver.functions.estimateSwapIn(
                             pool_address,
                             swap0to1,
                             amount_in,
-                            0  # amountOutMin = 0 (no slippage protection for quote)
+                            0,  # amountOutMin = 0 (no slippage protection for quote)
                         ).call()
-                        
+
                         # Calculate price
                         from_decimals = loader.get_token_decimals(from_token)
                         to_decimals = loader.get_token_decimals(to_token)
-                        price = (amount_out / 10**to_decimals) / (amount_in / 10**from_decimals)
-                        
+                        price = (amount_out / 10**to_decimals) / (
+                            amount_in / 10**from_decimals
+                        )
+
                         if best_price is None or price > best_price:
                             best_price = price
                             best_pool_address = pool_address
-                            
+
                     except Exception:
                         continue
-                
+
                 if best_price:
                     return f"Fluid DEX: 1 {from_token} = {best_price:.6f} {to_token}\nPool: {best_pool_address}"
                 else:
@@ -1233,23 +1241,23 @@ def get_maverick_price(
         config = get_config()
         loader = get_config_loader()
         abi_fetcher = get_abi_fetcher()
-        
+
         maverick_config = config.dexes.get("maverick")
         if not maverick_config or not maverick_config.factory_address:
             return "Maverick integration pending - factory address not configured"
-        
+
         # Setup web3
         if rpc_url is None:
             rpc_url = config.default_chain.rpc_url
         w3 = Web3(Web3.HTTPProvider(rpc_url))
-        
+
         # Convert ETH to WETH if needed
         from_address = loader.get_token_address(from_token)
         to_address = loader.get_token_address(to_token)
-        
+
         # Try to fetch factory ABI dynamically
         factory_abi = abi_fetcher.get_abi(maverick_config.factory_address)
-        
+
         if not factory_abi:
             # Fall back to config ABI
             factory_contract_info = None
@@ -1257,36 +1265,35 @@ def get_maverick_price(
                 if contract.name == "Factory":
                     factory_contract_info = contract
                     break
-            
+
             if not factory_contract_info:
                 return "Maverick factory ABI not configured"
             factory_abi = factory_contract_info.abi
-        
+
         # Get pool ABI from config (we'll fetch dynamically when we find a pool)
         pool_abi_template = None
         for contract in maverick_config.contracts:
             if contract.name == "Pool":
                 pool_abi_template = contract.abi
                 break
-        
+
         # Create factory contract instance
         factory = w3.eth.contract(
-            address=maverick_config.factory_address,
-            abi=factory_abi
+            address=maverick_config.factory_address, abi=factory_abi
         )
-        
+
         # Common Maverick parameters
         # Fee is in prbmath 60x18 format (1e18 = 100%)
         # Common fees: 0.01% = 1e14, 0.05% = 5e14, 0.1% = 1e15, 0.3% = 3e15, 1% = 1e16
         common_params = [
-            (int(1e14), 1, 3600),     # 0.01% fee, 1 tick spacing, 1 hour lookback
-            (int(5e14), 10, 3600),    # 0.05% fee, 10 tick spacing
-            (int(1e15), 10, 3600),    # 0.1% fee, 10 tick spacing
-            (int(3e15), 50, 3600),    # 0.3% fee, 50 tick spacing
-            (int(1e16), 100, 3600),   # 1% fee, 100 tick spacing
-            (int(2e15), 20, 3600),    # 0.2% fee, 20 tick spacing
+            (int(1e14), 1, 3600),  # 0.01% fee, 1 tick spacing, 1 hour lookback
+            (int(5e14), 10, 3600),  # 0.05% fee, 10 tick spacing
+            (int(1e15), 10, 3600),  # 0.1% fee, 10 tick spacing
+            (int(3e15), 50, 3600),  # 0.3% fee, 50 tick spacing
+            (int(1e16), 100, 3600),  # 1% fee, 100 tick spacing
+            (int(2e15), 20, 3600),  # 0.2% fee, 20 tick spacing
         ]
-        
+
         # Try to find a pool for this token pair
         pool_address = None
         actual_fee = None
@@ -1294,27 +1301,19 @@ def get_maverick_price(
             try:
                 # lookup returns address(0) if pool doesn't exist
                 found_pool = factory.functions.lookup(
-                    fee,
-                    tick_spacing,
-                    lookback,
-                    from_address,
-                    to_address
+                    fee, tick_spacing, lookback, from_address, to_address
                 ).call()
-                
+
                 if found_pool != "0x0000000000000000000000000000000000000000":
                     pool_address = found_pool
                     actual_fee = fee
                     break
-                    
+
                 # Also try reversed order
                 found_pool = factory.functions.lookup(
-                    fee,
-                    tick_spacing,
-                    lookback,
-                    to_address,
-                    from_address
+                    fee, tick_spacing, lookback, to_address, from_address
                 ).call()
-                
+
                 if found_pool != "0x0000000000000000000000000000000000000000":
                     pool_address = found_pool
                     actual_fee = fee
@@ -1322,13 +1321,13 @@ def get_maverick_price(
                     from_address, to_address = to_address, from_address
                     from_token, to_token = to_token, from_token
                     break
-                    
+
             except Exception:
                 continue
-        
+
         if not pool_address:
             return f"No Maverick pools found for {from_token}/{to_token}"
-        
+
         # Get price from the pool using calculateSwap
         try:
             # Try to fetch pool ABI dynamically
@@ -1336,41 +1335,41 @@ def get_maverick_price(
             if not pool_abi:
                 # Fall back to template ABI
                 pool_abi = pool_abi_template
-                
+
             if not pool_abi:
                 return "Could not fetch Maverick pool ABI"
-                
+
             pool = w3.eth.contract(address=pool_address, abi=pool_abi)
-            
+
             # Calculate swap for 1 unit of from_token
             amount_in = 10 ** loader.get_token_decimals(from_token)
-            
+
             # calculateSwap(amount, tokenAIn, exactOutput, sqrtPriceLimit)
             # tokenAIn = True if swapping tokenA for tokenB
             token_a_in = pool.functions.tokenA().call().lower() == from_address.lower()
-            
+
             result = pool.functions.calculateSwap(
                 amount_in,
                 token_a_in,
                 False,  # exactOutput = False (we're specifying input)
-                0       # sqrtPriceLimit = 0 (no limit)
+                0,  # sqrtPriceLimit = 0 (no limit)
             ).call()
-            
+
             amount_out = result[0]
-            
+
             # Calculate price
             from_decimals = loader.get_token_decimals(from_token)
             to_decimals = loader.get_token_decimals(to_token)
-            
+
             price = (amount_out / 10**to_decimals) / (amount_in / 10**from_decimals)
-            
+
             # Convert fee from prbmath format to percentage
             fee_percent = (actual_fee / 1e18) * 100
             return f"Maverick: 1 {from_token} = {price:.6f} {to_token} (fee: {fee_percent:.2f}%)\nPool: {pool_address}"
-            
+
         except Exception as e:
             return f"Error calculating Maverick price: {str(e)}"
-        
+
     except Exception as e:
         return f"Error fetching Maverick price: {str(e)}"
 
@@ -1403,7 +1402,7 @@ def get_all_dex_prices(from_token: str, to_token: str) -> str:
     # Add Fluid DEX price
     fluid_price = get_fluid_dex_price.func(from_token, to_token)
     results.append(fluid_price)
-    
+
     # Add Maverick price
     maverick_price = get_maverick_price.func(from_token, to_token)
     results.append(maverick_price)

@@ -28,6 +28,10 @@ from dexter.tools.dex_prices import (
     get_sushiswap_price,
     get_uniswap_v3_price,
 )
+from dexter.tools.transactions import (
+    alchemy_simulate_tool,
+    submit_transaction_tool,
+)
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -64,10 +68,13 @@ tools = [
     calculate_profit,
     format_arbitrage_strategy,
     analyze_token_pair_opportunities,
+    # Transaction tools
+    submit_transaction_tool,
+    alchemy_simulate_tool,
 ]
 
 graph = create_react_agent(
-            model=model,
-            tools=tools,
-            prompt="You are an Ethereum Dex (decentralised exchange) assistant bot agent. Use the tools provided to analyze DEX prices and find arbitrage opportunities. Respond with actionable strategies based on the analysis.",
-        )
+    model=model,
+    tools=tools,
+    prompt="You are an Ethereum Dex (decentralised exchange) assistant bot agent. Use the tools provided to analyze DEX prices and find arbitrage opportunities. Respond with actionable strategies based on the analysis.",
+)

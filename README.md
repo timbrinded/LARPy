@@ -25,6 +25,8 @@ LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates h
 - Check ETH and ERC-20 token balances
 - Monitor current gas prices
 - Estimate transaction costs
+- **Submit transactions**: Execute blockchain transactions with gas optimization
+- **Simulate transactions**: Preview asset changes using Alchemy's simulateAssetChanges API
 
 ### DEX Price Tools
 - **Uniswap V3**: Uses Quoter contract for accurate swap simulation
@@ -63,6 +65,10 @@ uv sync
 # Create .env file
 echo "OPENAI_API_KEY=your-openai-api-key-here" > .env
 
+# Required for transaction tools
+echo "ALCHEMY_API_KEY=your-alchemy-api-key" >> .env
+echo "AGENT_ETH_KEY=your-ethereum-private-key" >> .env
+
 # Optional: Add LangSmith for tracing
 echo "LANGSMITH_API_KEY=your-langsmith-key" >> .env
 ```
@@ -73,6 +79,8 @@ echo "LANGSMITH_API_KEY=your-langsmith-key" >> .env
 # Add to .env for custom Ethereum RPC (default uses public endpoints)
 echo "ETH_RPC_URL=https://your-eth-rpc-endpoint" >> .env
 ```
+
+⚠️ **SECURITY WARNING**: Never commit your `.env` file to version control. The `AGENT_ETH_KEY` contains your private key and must be kept secure.
 
 ### Running the Agent
 
@@ -114,6 +122,18 @@ Once the server is running, you can interact with the bot through the LangGraph 
 ```
 "What's the USDC balance for address 0x..."
 ```
+
+#### 6. Simulate a transaction:
+```
+"Simulate sending 1 ETH to 0x..."
+```
+Note: Uses ALCHEMY_API_KEY and derives sender address from AGENT_ETH_KEY
+
+#### 7. Submit a transaction:
+```
+"Submit a transaction to send 0.1 ETH to 0x..."
+```
+Note: Uses AGENT_ETH_KEY from environment for signing
 
 ### Example Arbitrage Detection Flow
 
@@ -267,7 +287,7 @@ uv run mypy src/
 
 ### Known Limitations
 
-- **Read-only**: Current implementation only detects opportunities, doesn't execute trades
+- **Limited Execution**: Transaction submission requires private keys (use with extreme caution)
 - **Direct Contract Queries**: Uniswap V3 and SushiSwap use on-chain queries which require checksummed addresses
 - **Gas Estimation**: Simple gas estimates may not reflect actual costs during high congestion
 - **Limited Pools**: Only includes major token pairs; less liquid pairs not supported
