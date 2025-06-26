@@ -53,7 +53,7 @@ class AlchemySimulateInput(BaseModel):
     data: str = Field(default="0x", description="Transaction data (for contract calls)")
     from_address: str | None = Field(
         default=None,
-        description="The sender address. If not provided, derives from AGENT_ETH_KEY environment variable",
+        description="The sender address. If not provided or set to '0xYourWalletAddress', derives from AGENT_ETH_KEY environment variable",
     )
     alchemy_api_key: str | None = Field(
         default=None,
@@ -201,8 +201,8 @@ def alchemy_simulate_asset_changes(
                 "error": "No Alchemy API key provided and ALCHEMY_API_KEY not found in environment",
             }
 
-    # Get from_address from private key if not provided
-    if not from_address:
+    # Handle special "0xYourWalletAddress" keyword or get from_address from private key if not provided
+    if not from_address or from_address.lower() == "0xyourwalletaddress":
         private_key = os.getenv("AGENT_ETH_KEY")
         if not private_key:
             return {

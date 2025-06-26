@@ -1,5 +1,6 @@
 """Blockchain tools for interacting with Ethereum with config support."""
 
+import logging
 import os
 from typing import Dict, List, Union
 
@@ -11,11 +12,12 @@ from web3 import Web3
 
 from ..config_loader import get_config
 
+logger = logging.getLogger(__name__)
 
 class GetBalanceInput(BaseModel):
     """Input for getting balance."""
 
-    address: str = Field(description="Ethereum address to check balance for")
+    address: str = Field(description="Ethereum address to check balance for. Use '0xYourWalletAddress' for the agent's wallet")
     token_address: str | None = Field(
         default=None,
         description="Token contract address. If not provided, returns ETH balance",
@@ -55,7 +57,7 @@ class EthCallInput(BaseModel):
     data: str = Field(description="Encoded function call data (hex string)")
     from_address: str | None = Field(
         default=None,
-        description="Address to call from (optional)",
+        description="Address to call from (optional). Use '0xYourWalletAddress' for the agent's wallet",
     )
     block_number: Union[int, str] = Field(
         default="latest",
@@ -78,7 +80,7 @@ class EthCallInput(BaseModel):
 class EstimateGasInput(BaseModel):
     """Input for estimating gas."""
 
-    from_address: str = Field(description="Address sending the transaction")
+    from_address: str = Field(description="Address sending the transaction. Use '0xYourWalletAddress' for the agent's wallet")
     to_address: str = Field(description="Address receiving the transaction")
     value: str = Field(default="0", description="Value in wei to send")
     data: str = Field(default="0x", description="Transaction data")
@@ -140,6 +142,7 @@ def get_balance(
             # Derive address from private key
             temp_w3 = Web3()
             account = temp_w3.eth.account.from_key(private_key)
+            logger.info(f"Using agent address: {account.address}")
             address = account.address
         except Exception as e:
             return {"error": f"Invalid private key in AGENT_ETH_KEY: {str(e)}"}
@@ -149,6 +152,7 @@ def get_balance(
         config = get_config()
         rpc_url = config.default_chain.rpc_url
 
+    logger.info(f"Connecting to Ethereum node at {rpc_url}")
     w3 = Web3(Web3.HTTPProvider(rpc_url))
 
     if not w3.is_connected():
@@ -288,7 +292,24 @@ def estimate_gas(
     data: str = "0x",
     rpc_url: str | None = None,
 ) -> Dict[str, Union[str, int]]:
-    """Estimate gas for a transaction using configuration."""
+    """Estimate gas for a transaction using configuration.
+    
+    Special handling: if from_address is "0xYourWalletAddress", it will use the 
+    agent's address derived from AGENT_ETH_KEY environment variable.
+    """
+    # Handle special "0xYourWalletAddress" keyword for from_address
+    if from_address.lower() == "0xyourwalletaddress":
+        private_key = os.getenv("AGENT_ETH_KEY")
+        if not private_key:
+            return {"error": "AGENT_ETH_KEY not found in environment"}
+        try:
+            # Derive address from private key
+            temp_w3 = Web3()
+            account = temp_w3.eth.account.from_key(private_key)
+            from_address = account.address
+        except Exception as e:
+            return {"error": f"Invalid private key in AGENT_ETH_KEY: {str(e)}"}
+    
     # Get RPC URL from config if not provided
     if rpc_url is None:
         config = get_config()
@@ -477,7 +498,7 @@ def eth_call(
 # Create the tools
 get_balance_tool = StructuredTool(
     name="get_balance",
-    description="Get ETH or token balance for an address. Uses configuration for RPC URL.",
+    description="Get ETH or token balance for an address. Use '0xYourWalletAddress' to check the agent's wallet. Uses configuration for RPC URL.",
     func=lambda **kwargs: get_balance(**kwargs),
     args_schema=GetBalanceInput,
 )
@@ -498,7 +519,7 @@ get_block_tool = StructuredTool(
 
 estimate_gas_tool = StructuredTool(
     name="estimate_gas",
-    description="Estimate gas for a transaction. Uses configuration for RPC URL.",
+    description="Estimate gas for a transaction. Use '0xYourWalletAddress' as from_address to estimate from the agent's wallet. Uses configuration for RPC URL.",
     func=lambda **kwargs: estimate_gas(**kwargs),
     args_schema=EstimateGasInput,
 )
@@ -507,6 +528,7 @@ eth_call_tool = StructuredTool(
     name="eth_call",
     description=(
         "Execute eth_call to read contract state with optional state overrides. "
+        "Use '0xYourWalletAddress' as from_address or in state_overrides to reference the agent's wallet. "
         "Useful for reading contract data, simulating calls with modified state, "
         "and testing 'what if' scenarios by overriding balances, storage, etc."
     ),

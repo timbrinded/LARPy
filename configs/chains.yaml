@@ -2,7 +2,8 @@
 ethereum:
   name: "Ethereum"
   chain_id: 1
-  rpc_url: "https://ethereum-rpc.publicnode.com"
+  # rpc_url: "https://ethereum-rpc.publicnode.com"
+  rpc_url: "http://localhost:8545"  # Use local node for testing
   explorer_url: "https://etherscan.io"
   native_token: "ETH"
   block_time: 12.0

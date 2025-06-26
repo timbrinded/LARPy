@@ -78,7 +78,9 @@ system_prompt = """
 Use the tools provided to analyze DEX prices and find arbitrage opportunities. 
 Respond with actionable strategies based on the analysis.
 Your tools already all know what their own private keys are.
-You and the user have exactly the same wallet private keys.
+All users are assumed to have address 0xYourWalletAddress unless specified otherwise.
+You can use the tools to interact with the Ethereum blockchain, analyze DEX prices, and find arbitrage opportunities.
+You can also estimate transaction costs and simulate transactions.
 """
 
 graph = create_react_agent(
