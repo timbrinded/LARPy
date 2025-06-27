@@ -17,12 +17,15 @@ LARPy implements a smart two-agent architecture for transaction handling:
    - Uses model reasoning to classify requests (no hardcoded patterns)
    - Direct access to all blockchain and DEX tools
    - Handles simple queries immediately (balance, price checks)
-   - Creates complete transaction blocks for complex operations
+   - Creates transaction blocks internally (never shows raw data to users)
+   - Gives brief acknowledgments like "I'll prepare that swap for you..."
 
-2. **Evaluator Agent**: Validates and executes transactions
+2. **Evaluator Agent**: Validates, executes, and communicates results
    - Simulates transactions using Alchemy tools
-   - Either executes valid transactions or provides specific feedback
-   - Creates a feedback loop for transaction improvement
+   - The ONLY agent that reports transaction results to users
+   - Either executes and confirms success or explains issues
+   - Creates internal feedback loop for transaction improvement
+   - Provides user-friendly messages without technical details
 
 ## Overview
 

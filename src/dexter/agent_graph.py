@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Annotated, Any, TypedDict
 
-from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
@@ -90,13 +90,24 @@ Your job is to:
 
 For transaction generation:
 - Use encoding tools to create proper transaction data
-- Format transactions as a list with: to, data, value, gas, description
+- Create a JSON list with: to, data, value, gas, description
 - Include all necessary transactions (e.g., approval before token swap)
-- Pass transactions to the evaluator by including "TRANSACTIONS_FOR_EVALUATION:" followed by the transaction list
+- Format your response with TWO sections separated by a special marker:
+  
+  [USER_MESSAGE]
+  I'll prepare that swap for you and check if it's safe to execute...
+  
+  [INTERNAL_DATA]
+  {"transactions": [{"to": "0x...", "data": "0x...", "value": "...", "gas": 250000, "description": "..."}]}
 
 For direct queries:
 - Just answer the user directly using the tools
-- No need to generate transactions
+- No need for the [INTERNAL_DATA] section
+
+IMPORTANT: 
+- The [USER_MESSAGE] section is what the user sees
+- The [INTERNAL_DATA] section contains transaction JSON (hidden from user)
+- Keep user messages brief and friendly
 
 Remember:
 - Users are at address 0xYourWalletAddress unless specified
@@ -127,20 +138,21 @@ def create_evaluator_agent():
 Your job is to:
 1. Receive transaction blocks from the generator
 2. Simulate them using alchemy_simulate_tool
-3. Decide whether to:
-   - Execute (if simulation successful and safe)
-   - Return feedback for improvement
+3. Communicate results to the user
 
 When evaluating:
-- Check simulation results for success
-- Verify expected outcomes match intent
+- Simulate each transaction carefully
+- Check for success and expected outcomes
 - Look for security issues (high slippage, MEV risk)
-- Consider gas efficiency
+- Consider gas costs
 
-If valid: Execute using submit_transaction_tool and report success
-If invalid: Provide specific feedback on what needs improvement
+Communication rules:
+- For successful simulations: Execute and tell user "✅ Transaction executed successfully! [details]"
+- For failed simulations: Explain the issue and say "Let me try a different approach..."
+- Always be user-friendly - no raw transaction data
+- You are the ONLY agent that talks to the user about transaction results
 
-Format feedback as: "EVALUATION_FEEDBACK: <specific issues and suggestions>"
+Internal feedback format (not shown to user): "EVALUATION_FEEDBACK: <specific issues>"
 """
     
     return create_react_agent(model=model, tools=tools, prompt=system_prompt)
@@ -160,37 +172,46 @@ async def run_generator(state: AgentState, config: dict) -> dict[str, Any]:
         "messages": state.messages
     })
     
-    # Extract messages and check for transactions
+    # Extract messages
     new_messages = result.get("messages", [])
-    updates = {"messages": new_messages}
+    updates = {"messages": []}
     
-    # Check if generator created transactions for evaluation
-    if new_messages:
-        last_message = new_messages[-1]
-        if hasattr(last_message, 'content'):
-            content = last_message.content
-            if "TRANSACTIONS_FOR_EVALUATION:" in content:
-                # Extract transactions from message
+    # Process the final AI message to extract user message and internal data
+    for msg in new_messages:
+        if isinstance(msg, AIMessage) and msg.content:
+            content = msg.content
+            
+            # Check if message contains our special format
+            if "[USER_MESSAGE]" in content and "[INTERNAL_DATA]" in content:
                 import json
                 import re
                 
-                # Find JSON block after the marker
-                match = re.search(r'TRANSACTIONS_FOR_EVALUATION:\s*```(?:json)?\s*(.*?)\s*```', content, re.DOTALL)
-                if not match:
-                    match = re.search(r'TRANSACTIONS_FOR_EVALUATION:\s*(\[.*?\])', content, re.DOTALL)
+                # Extract user message
+                user_match = re.search(r'\[USER_MESSAGE\]\s*(.*?)\s*\[INTERNAL_DATA\]', content, re.DOTALL)
+                if user_match:
+                    user_message = user_match.group(1).strip()
+                    updates["messages"].append(AIMessage(content=user_message))
                 
-                if match:
+                # Extract internal data
+                data_match = re.search(r'\[INTERNAL_DATA\]\s*({.*?})\s*$', content, re.DOTALL)
+                if data_match:
                     try:
-                        transactions = json.loads(match.group(1))
-                        updates["pending_transactions"] = transactions
-                        logger.info(f"Extracted {len(transactions)} transactions for evaluation")
+                        internal_data = json.loads(data_match.group(1))
+                        if "transactions" in internal_data:
+                            updates["pending_transactions"] = internal_data["transactions"]
+                            logger.info(f"Extracted {len(internal_data['transactions'])} transactions for evaluation")
+                        else:
+                            logger.warning("Internal data found but no 'transactions' key")
                     except json.JSONDecodeError:
-                        logger.error("Failed to parse transactions from generator")
+                        logger.error("Failed to parse internal data from generator")
+            else:
+                # Regular message without internal data
+                updates["messages"].append(msg)
+        else:
+            # Include non-AI messages as-is
+            updates["messages"].append(msg)
     
-    # Check if this was just a query (no transactions needed)
-    if not updates.get("pending_transactions") and not state.evaluation_feedback:
-        updates["completed"] = True
-    
+    # Don't mark as completed - let evaluator decide
     return updates
 
 
@@ -199,13 +220,18 @@ async def run_evaluator(state: AgentState, config: dict) -> dict[str, Any]:
     logger.info("Running evaluator agent")
     
     if not state.pending_transactions:
-        return {"completed": True}
+        # No transactions to evaluate - this was a direct query
+        # Just mark as completed and let the generator's response stand
+        return {"completed": True, "messages": []}
     
-    # Prepare message for evaluator
-    tx_message = f"Please evaluate these transactions:\n```json\n{state.pending_transactions}\n```"
+    # Prepare message for evaluator with transaction details
+    import json
+    tx_details = json.dumps(state.pending_transactions, indent=2)
+    
+    tx_message = f"Evaluate and process these transactions:\n```json\n{tx_details}\n```"
     
     if state.evaluation_feedback:
-        tx_message += f"\n\nPrevious feedback was addressed. The generator made these improvements:\n{state.evaluation_feedback.get('improvements', 'See updated transactions above')}"
+        tx_message += f"\n\nThe generator addressed previous feedback. Please re-evaluate."
     
     # Run evaluator
     result = await evaluator_agent.ainvoke({
@@ -214,30 +240,38 @@ async def run_evaluator(state: AgentState, config: dict) -> dict[str, Any]:
     
     # Process evaluator response
     new_messages = result.get("messages", [])
-    updates = {"messages": new_messages}
+    updates = {"messages": []}
     
-    if new_messages:
-        last_message = new_messages[-1]
-        if hasattr(last_message, 'content'):
-            content = last_message.content
-            
-            # Check for feedback (needs improvement)
-            if "EVALUATION_FEEDBACK:" in content:
+    # Look for feedback in tool messages (internal)
+    feedback_found = False
+    for msg in new_messages:
+        if hasattr(msg, 'content'):
+            # Check for internal feedback
+            if "EVALUATION_FEEDBACK:" in msg.content:
                 import re
-                match = re.search(r'EVALUATION_FEEDBACK:\s*(.*?)(?:\n\n|$)', content, re.DOTALL)
+                match = re.search(r'EVALUATION_FEEDBACK:\s*(.*?)(?:\n|$)', msg.content, re.DOTALL)
                 if match:
                     feedback = match.group(1).strip()
                     updates["evaluation_feedback"] = {"feedback": feedback}
                     updates["pending_transactions"] = []  # Clear for regeneration
-                    # Add feedback to messages for generator
+                    feedback_found = True
+                    # Add internal message for generator
                     updates["messages"].append(HumanMessage(
-                        content=f"The evaluator provided this feedback: {feedback}\n\nPlease improve the transactions based on this feedback."
+                        content=f"Please improve the transaction based on this issue: {feedback}"
                     ))
+                # Remove EVALUATION_FEEDBACK from user-visible content
+                cleaned_content = re.sub(r'EVALUATION_FEEDBACK:.*?(?:\n|$)', '', msg.content)
+                if cleaned_content.strip() and isinstance(msg, AIMessage):
+                    updates["messages"].append(AIMessage(content=cleaned_content.strip()))
             else:
-                # Assume execution completed
-                updates["completed"] = True
-                updates["ready_to_execute"] = False
-                updates["pending_transactions"] = []
+                # Include message as-is
+                updates["messages"].append(msg)
+    
+    # If no feedback found, assume success
+    if not feedback_found:
+        updates["completed"] = True
+        updates["ready_to_execute"] = False
+        updates["pending_transactions"] = []
     
     return updates
 
@@ -255,8 +289,8 @@ def should_continue(state: AgentState) -> str:
     if state.evaluation_feedback and not state.completed:
         return "generator"
     
-    # Default to generator for new requests
-    return "generator"
+    # If no transactions and no feedback, go to evaluator to finalize
+    return "evaluator"
 
 
 def create_agent_graph():
@@ -276,8 +310,7 @@ def create_agent_graph():
         should_continue,
         {
             "evaluator": "evaluator",
-            "generator": "generator",
-            END: END
+            "generator": "generator"
         }
     )
     
