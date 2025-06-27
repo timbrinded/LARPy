@@ -49,7 +49,6 @@ from .mcp_client import (
     perplexity_conversation,
     perplexity_search,
 )
-from .perplexity_simple import search_online
 from .swap_encoder import (
     encode_erc20_approve,
     encode_sushiswap_swap,
@@ -104,8 +103,6 @@ __all__ = [
     "get_contract_abi",
     "get_contract_source",
     "etherscan_tools",
-    # Search tools
-    "search_online",
     # MCP tools
     "perplexity_search",
     "perplexity_conversation",

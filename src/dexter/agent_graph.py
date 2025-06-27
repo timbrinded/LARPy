@@ -23,7 +23,6 @@ from src.dexter.tools import (
     get_my_balance,
     perplexity_conversation,
     perplexity_search,
-    search_online,
     submit_transaction_tool,
 )
 
@@ -66,8 +65,6 @@ def create_generator_agent():
         eth_call_tool,
         get_contract_abi,
         get_contract_source,
-        # Online search
-        search_online,
         # MCP-powered Perplexity search
         perplexity_search,
         perplexity_conversation,
@@ -92,7 +89,6 @@ Key capabilities:
 - call_contract: Call any contract function from the agent's address
 - eth_call: Read ANY contract data (for general queries)
 - get_contract_abi: Understand what functions a contract exposes
-- search_online: Find current protocol info, contract addresses, docs
 - perplexity_search: Use Perplexity AI for more accurate and up-to-date information
 - perplexity_conversation: Have multi-turn conversations with Perplexity AI
 - Transaction encoders: For common operations (kept for convenience)
