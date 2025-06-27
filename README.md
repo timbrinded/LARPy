@@ -72,6 +72,12 @@ LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates h
 - Generate formatted trading strategies
 - Analyze multiple token pairs in batch
 
+### MCP (Model Context Protocol) Integration
+- **Perplexity AI Search**: Enhanced search capabilities via MCP protocol
+- **Multi-turn Conversations**: Maintain context across Perplexity interactions
+- **Automatic Server Management**: MCP client handles server lifecycle
+- **Seamless Integration**: Works alongside existing search tools
+
 ## Getting Started
 
 ### Prerequisites
@@ -123,7 +129,11 @@ echo "ETH_RPC_URL=https://your-eth-rpc-endpoint" >> .env
 - **Perplexity**: Get your API key at https://www.perplexity.ai/settings/api (used via MCP)
 - **Alchemy**: Sign up at https://www.alchemy.com/
 
-**Note**: The agent uses MCP (Model Context Protocol) to connect to Perplexity. The MCP server will be automatically started when needed.
+**MCP Setup** (Model Context Protocol):
+- The agent uses MCP to connect to Perplexity for enhanced search capabilities
+- The Perplexity MCP server (`@ppl-ai/mcp-perplexity`) will be automatically started when needed
+- Ensure you have Node.js installed for MCP server support
+- No additional configuration needed - the integration handles server lifecycle automatically
 
 ### Running the Agent
 

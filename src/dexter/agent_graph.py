@@ -21,6 +21,8 @@ from src.dexter.tools import (
     get_contract_abi,
     get_contract_source,
     get_my_balance,
+    perplexity_conversation,
+    perplexity_search,
     search_online,
     submit_transaction_tool,
 )
@@ -52,7 +54,7 @@ def create_generator_agent():
     model_config = config.models
     
     model = ChatOpenAI(
-        model=model_config.model_name,
+        model="o4-mini-2025-04-16",
         max_tokens=model_config.max_tokens,
     )
     
@@ -66,6 +68,9 @@ def create_generator_agent():
         get_contract_source,
         # Online search
         search_online,
+        # MCP-powered Perplexity search
+        perplexity_search,
+        perplexity_conversation,
         # Transaction encoding (kept for convenience)
         encode_uniswap_v3_swap,
         encode_sushiswap_swap,
@@ -88,6 +93,8 @@ Key capabilities:
 - eth_call: Read ANY contract data (for general queries)
 - get_contract_abi: Understand what functions a contract exposes
 - search_online: Find current protocol info, contract addresses, docs
+- perplexity_search: Use Perplexity AI for more accurate and up-to-date information
+- perplexity_conversation: Have multi-turn conversations with Perplexity AI
 - Transaction encoders: For common operations (kept for convenience)
 
 For transaction generation:
@@ -135,7 +142,8 @@ def create_evaluator_agent():
     model_config = config.models
     
     model = ChatOpenAI(
-        model=model_config.model_name,
+        model="gpt-4.1-mini-2025-04-14",
+        temperature=0.0,
         max_tokens=model_config.max_tokens,
     )
     
