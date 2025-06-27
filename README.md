@@ -3,23 +3,50 @@
 [![CI](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml)
 [![Integration Tests](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml)
 
-LARPy is an Ethereum DEX arbitrage detection bot built with LangGraph. This agent analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
+LARPy is an Ethereum DEX arbitrage detection bot built with LangGraph. This agent uses an **evaluator-optimizer pattern** to validate and optimize Ethereum transactions before execution. It analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
 
 ## Architecture
 
 ![LARPy Architecture](./static/architecture.png)
 
+### Evaluator-Optimizer Pattern
+
+LARPy implements a sophisticated evaluator-optimizer pattern for transaction validation:
+
+1. **Transaction Generation**: Creates initial transaction proposals based on user objectives
+2. **Evaluation**: Validates transactions against multiple criteria:
+   - Gas efficiency
+   - Security (MEV protection, slippage)
+   - Correctness (state changes match objectives)
+   - Efficiency (optimal routing)
+3. **Optimization**: Improves transactions based on evaluation feedback
+4. **Subagent Analysis**: Spawns specialized agents for deep validation:
+   - **Gas Analyzer**: Optimizes gas usage patterns
+   - **Security Validator**: Checks for vulnerabilities
+   - **MEV Inspector**: Assesses MEV attack risks
+   - **State Validator**: Confirms expected state changes
+5. **Finalization**: Prepares validated transactions for execution
+
 ## Overview
 
-LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph. The bot:
+LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph's evaluator-optimizer pattern. The bot:
 
+- **Generates Transactions**: Creates Ethereum transactions based on user objectives (swaps, arbitrage, transfers)
+- **Evaluates Transactions**: Validates against gas efficiency, security, correctness, and MEV protection
+- **Optimizes Automatically**: Improves transactions based on evaluation feedback
+- **Spawns Subagents**: Uses specialized validators for deep analysis
 - **Monitors Multiple DEXs**: Fetches real-time prices from Uniswap V3, SushiSwap, and Curve Finance
 - **Identifies Arbitrage**: Automatically detects profitable price discrepancies between exchanges
 - **Calculates Profits**: Factors in gas costs and provides net profit estimates
-- **Focuses on Major Tokens**: Works with well-audited tokens like ETH, USDC, USDT, WBTC, UNI, AAVE
-- **Provides Clear Strategies**: Generates step-by-step execution plans for identified opportunities
 
 ## Features
+
+### Transaction Evaluation & Optimization
+- **Multi-criteria validation**: Gas, security, efficiency, correctness
+- **Automatic optimization**: Improves transactions based on validation feedback
+- **Subagent coordination**: Parallel analysis by specialized validators
+- **Configurable rules**: Customizable thresholds and validation criteria
+- **Optimization tips**: Actionable feedback for transaction improvement
 
 ### Blockchain Tools
 - Check ETH and ERC-20 token balances
@@ -92,9 +119,20 @@ uv run langgraph dev
 
 The server will start on `http://localhost:8123` with LangGraph Studio available for visual debugging.
 
+### Available Graphs
+
+1. **`agent`** (Recommended) - Integrated generator-evaluator workflow
+   - Chat interface for transaction generation
+   - Automatic evaluation and optimization
+   - User-friendly feedback loop
+
+2. **`react_agent`** - Original React pattern agent
+   - Direct tool execution
+   - Good for exploration
+
 ### Testing the Arbitrage Bot
 
-Once the server is running, you can interact with the bot through the LangGraph Studio UI or API. Here are example queries:
+Once the server is running, select the **`agent`** graph in LangGraph Studio and interact with it. Here are example queries:
 
 #### 1. Check current gas prices:
 ```
@@ -108,9 +146,24 @@ Once the server is running, you can interact with the bot through the LangGraph 
 "Check stETH/ETH price on Curve Finance"
 ```
 
-#### 3. Find arbitrage opportunities:
+#### 3. Generate and evaluate transactions:
 ```
-"Find arbitrage opportunities for ETH/USDC, ETH/USDT, and WBTC/ETH pairs"
+"I want to swap 2 ETH for USDC"
+# The agent will:
+# 1. Generate the swap transaction
+# 2. Evaluate it for gas, security, and correctness
+# 3. Suggest optimizations if needed
+# 4. Ask for approval before finalizing
+```
+
+#### 4. Find arbitrage opportunities:
+```
+"Find arbitrage opportunities for ETH/USDC"
+# The agent will:
+# 1. Check prices across DEXs
+# 2. Generate arbitrage transaction if profitable
+# 3. Evaluate the transaction
+# 4. Optimize for maximum profit
 ```
 
 #### 4. Get a full arbitrage analysis:
@@ -301,6 +354,41 @@ uv run mypy src/
 - **Multi-hop Arbitrage**: Support complex paths like ETH → USDC → DAI → ETH
 - **Cross-chain Arbitrage**: Add support for L2s and bridges
 - **Analytics Dashboard**: Track historical performance and opportunities
+
+### Evaluator-Optimizer Workflow
+
+The integrated agent follows this workflow:
+
+1. **User Request** → Agent parses intent (swap, arbitrage, transfer)
+2. **Transaction Generation** → Creates initial transaction(s)
+3. **Evaluation** → Validates against multiple criteria:
+   - Gas efficiency (is gas limit reasonable?)
+   - Security (MEV protection, slippage limits)
+   - Correctness (will it achieve the objective?)
+   - Efficiency (optimal routing?)
+4. **Optimization** → If issues found, apply improvements:
+   - Reduce gas limits
+   - Tighten slippage protection
+   - Improve routing
+   - Add MEV protection
+5. **Re-evaluation** → Verify optimizations worked
+6. **User Approval** → Present final transactions for execution
+
+Example interaction:
+```
+User: "Swap 5 ETH for USDC"
+Agent: "Generated swap transaction... Evaluating..."
+Agent: "⚠️ Found 2 issues:
+  - Gas limit too high (wasting ETH)
+  - No MEV protection
+  Would you like me to optimize?"
+User: "Yes"
+Agent: "Applied optimizations:
+  ✓ Reduced gas from 500k to 250k
+  ✓ Added MEV protection
+  Re-evaluating..."
+Agent: "✅ All checks passed! Transaction ready for execution."
+```
 
 <!--
 Configuration auto-generated by `langgraph template lock`. DO NOT EDIT MANUALLY.

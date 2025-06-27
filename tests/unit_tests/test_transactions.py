@@ -303,13 +303,15 @@ class TestTransactionTools:
         """Test Alchemy simulation using ALCHEMY_API_KEY and AGENT_ETH_KEY from environment."""
         # Set environment variables
         os.environ["ALCHEMY_API_KEY"] = "env_test_api_key"
-        os.environ["AGENT_ETH_KEY"] = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        os.environ["AGENT_ETH_KEY"] = (
+            "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        )
 
         # Mock Web3 for address validation and account derivation
         mock_w3 = Mock()
         mock_web3_class.return_value = mock_w3
         mock_w3.to_checksum_address.side_effect = lambda x: x
-        
+
         # Mock account derivation from private key
         mock_account = Mock()
         mock_account.address = "0x742d35Cc6634C0532925a3b844Bc9e7595f62d6e"
@@ -347,7 +349,9 @@ class TestTransactionTools:
         call_args = mock_requests.call_args
         assert "env_test_api_key" in call_args[0][0]  # URL contains the API key
         # Verify that from_key was called to derive address
-        mock_w3.eth.account.from_key.assert_called_once_with("0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+        mock_w3.eth.account.from_key.assert_called_once_with(
+            "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        )
 
     @patch("dexter.tools.transactions.Web3")
     def test_submit_transaction_no_key_error(self, mock_web3_class):
@@ -388,12 +392,12 @@ class TestTransactionTools:
         """Test error when no from_address is provided and AGENT_ETH_KEY not in environment."""
         # Ensure no env keys
         os.environ.pop("AGENT_ETH_KEY", None)
-        
+
         result = alchemy_simulate_asset_changes(
             to_address="0x8f977e912ef692455868871b3c6f632479c9e7f7",
             value="1000000000000000000",
             alchemy_api_key="test_api_key",
         )
-        
+
         assert result["success"] is False
         assert "AGENT_ETH_KEY not found" in result["error"]

@@ -14,10 +14,13 @@ from ..config_loader import get_config
 
 logger = logging.getLogger(__name__)
 
+
 class GetBalanceInput(BaseModel):
     """Input for getting balance."""
 
-    address: str = Field(description="Ethereum address to check balance for. Use '0xYourWalletAddress' for the agent's wallet")
+    address: str = Field(
+        description="Ethereum address to check balance for. Use '0xYourWalletAddress' for the agent's wallet"
+    )
     token_address: str | None = Field(
         default=None,
         description="Token contract address. If not provided, returns ETH balance",
@@ -80,7 +83,9 @@ class EthCallInput(BaseModel):
 class EstimateGasInput(BaseModel):
     """Input for estimating gas."""
 
-    from_address: str = Field(description="Address sending the transaction. Use '0xYourWalletAddress' for the agent's wallet")
+    from_address: str = Field(
+        description="Address sending the transaction. Use '0xYourWalletAddress' for the agent's wallet"
+    )
     to_address: str = Field(description="Address receiving the transaction")
     value: str = Field(default="0", description="Value in wei to send")
     data: str = Field(default="0x", description="Transaction data")
@@ -129,8 +134,8 @@ def get_balance(
     address: str, token_address: str | None = None, rpc_url: str | None = None
 ) -> Dict[str, Union[str, float]]:
     """Get ETH or token balance for an address using configuration.
-    
-    Special handling: if address is "0xYourWalletAddress", it will use the 
+
+    Special handling: if address is "0xYourWalletAddress", it will use the
     agent's address derived from AGENT_ETH_KEY environment variable.
     """
     # Handle special "0xYourWalletAddress" keyword
@@ -146,7 +151,7 @@ def get_balance(
             address = account.address
         except Exception as e:
             return {"error": f"Invalid private key in AGENT_ETH_KEY: {str(e)}"}
-    
+
     # Get RPC URL from config if not provided
     if rpc_url is None:
         config = get_config()
@@ -293,8 +298,8 @@ def estimate_gas(
     rpc_url: str | None = None,
 ) -> Dict[str, Union[str, int]]:
     """Estimate gas for a transaction using configuration.
-    
-    Special handling: if from_address is "0xYourWalletAddress", it will use the 
+
+    Special handling: if from_address is "0xYourWalletAddress", it will use the
     agent's address derived from AGENT_ETH_KEY environment variable.
     """
     # Handle special "0xYourWalletAddress" keyword for from_address
@@ -309,7 +314,7 @@ def estimate_gas(
             from_address = account.address
         except Exception as e:
             return {"error": f"Invalid private key in AGENT_ETH_KEY: {str(e)}"}
-    
+
     # Get RPC URL from config if not provided
     if rpc_url is None:
         config = get_config()
@@ -368,19 +373,19 @@ def eth_call(
     rpc_url: str | None = None,
 ) -> Dict[str, Union[str, Dict]]:
     """Execute eth_call to read contract state with optional state overrides.
-    
+
     This is useful for:
     - Reading contract state without sending a transaction
     - Simulating contract calls with modified state
     - Testing "what if" scenarios by overriding balances, storage, etc.
-    
+
     State overrides allow you to modify:
     - balance: Set ETH balance for an address
     - nonce: Set transaction count
     - code: Replace contract bytecode
     - state: Override specific storage slots
-    
-    Special handling: if from_address is "0xYourWalletAddress", it will use the 
+
+    Special handling: if from_address is "0xYourWalletAddress", it will use the
     agent's address derived from AGENT_ETH_KEY environment variable.
     """
     # Handle special "0xYourWalletAddress" keyword for from_address
@@ -394,7 +399,10 @@ def eth_call(
             account = temp_w3.eth.account.from_key(private_key)
             from_address = account.address
         except Exception as e:
-            return {"success": False, "error": f"Invalid private key in AGENT_ETH_KEY: {str(e)}"}
+            return {
+                "success": False,
+                "error": f"Invalid private key in AGENT_ETH_KEY: {str(e)}",
+            }
     # Get RPC URL from config if not provided
     if rpc_url is None:
         config = get_config()
@@ -407,16 +415,16 @@ def eth_call(
 
     try:
         to_address = w3.to_checksum_address(to_address)
-        
+
         # Build the call parameters
         call_params = {
             "to": to_address,
             "data": data,
         }
-        
+
         if from_address:
             call_params["from"] = w3.to_checksum_address(from_address)
-        
+
         # Handle state overrides if provided
         if state_overrides:
             # Convert addresses to checksum format and ensure proper hex formatting
@@ -436,10 +444,10 @@ def eth_call(
                     else:
                         # Use the already derived from_address
                         addr = from_address
-                
+
                 checksummed_addr = w3.to_checksum_address(addr)
                 formatted_overrides[checksummed_addr] = {}
-                
+
                 for key, value in overrides.items():
                     if key == "balance":
                         # Ensure balance is hex
@@ -471,13 +479,13 @@ def eth_call(
                         formatted_overrides[checksummed_addr][key] = formatted_state
                     else:
                         formatted_overrides[checksummed_addr][key] = value
-            
+
             # Make the call with state overrides
             result = w3.eth.call(call_params, block_number, formatted_overrides)
         else:
             # Make the call without state overrides
             result = w3.eth.call(call_params, block_number)
-        
+
         return {
             "success": True,
             "result": "0x" + result.hex(),
@@ -486,7 +494,7 @@ def eth_call(
             "block": block_number,
             "state_overrides": state_overrides if state_overrides else None,
         }
-        
+
     except Exception as e:
         return {
             "success": False,

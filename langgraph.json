@@ -1,7 +1,8 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "dexter": "./src/dexter/premade.py:graph"
+    "eval-optimizer": "./src/dexter/integrated_graph.py:graph",
+    "react": "./src/dexter/premade.py:graph"
   },
   "env": ".env",
   "image_distro": "wolfi"

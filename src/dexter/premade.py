@@ -28,14 +28,14 @@ from dexter.tools.dex_prices import (
     get_sushiswap_price,
     get_uniswap_v3_price,
 )
+from dexter.tools.swap_encoder import (
+    encode_erc20_approve,
+    encode_sushiswap_swap,
+    encode_uniswap_v3_swap,
+)
 from dexter.tools.transactions import (
     alchemy_simulate_tool,
     submit_transaction_tool,
-)
-from dexter.tools.swap_encoder import (
-    encode_uniswap_v3_swap,
-    encode_sushiswap_swap,
-    encode_erc20_approve,
 )
 
 # Set up logging
@@ -103,8 +103,4 @@ Key points:
 - Set reasonable deadlines (20 minutes default)
 """
 
-graph = create_react_agent(
-    model=model,
-    tools=tools,
-    prompt=system_prompt
-)
+graph = create_react_agent(model=model, tools=tools, prompt=system_prompt)

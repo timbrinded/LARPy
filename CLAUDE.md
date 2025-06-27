@@ -49,7 +49,32 @@ LANGSMITH_TRACING=true uv run pytest tests/integration_tests/
 
 ## Architecture Overview
 
-LARPy is a LangGraph agent that implements a state-based graph processing system for Ethereum arbitrage. The core architecture consists of:
+LARPy is a LangGraph agent that implements an evaluator-optimizer pattern for Ethereum transactions. The system has been refactored from a React agent pattern to provide better validation and optimization of blockchain transactions.
+
+### Evaluator-Optimizer Pattern
+The core architecture now consists of:
+
+1. **Integrated Graph** (`src/dexter/integrated_graph.py`) - Main entry point
+   - Unified chat interface for users  
+   - Routes between generation, evaluation, and optimization
+   - Manages the complete transaction lifecycle
+   - **Use this graph** when interacting through LangGraph Studio
+
+2. **Evaluator Module** (`src/evaluator/`) - Core validation logic
+   - `evaluator.py` - Main evaluation engine with batch processing
+   - `optimizer.py` - Transaction optimization strategies
+   - `validation_rules.py` - Configurable validation criteria
+   - `subagents.py` - Specialized validators:
+     - **GasAnalyzer**: Optimizes gas usage patterns
+     - **SecurityValidator**: Checks for MEV vulnerabilities
+     - **MEVInspector**: Assesses sandwich attack risks
+     - **StateValidator**: Confirms expected state changes
+
+### Key Improvements from React Pattern
+- **Better validation**: Multi-criteria checks before execution
+- **Automatic optimization**: Improves transactions based on feedback
+- **User interaction**: Clear feedback loop for transaction approval
+- **Parallel analysis**: Subagents run concurrently for faster validation
 
 ### Core Graph System (`src/agent/graph.py`)
 - **State Management**: Uses `@dataclass` for type-safe state handling
