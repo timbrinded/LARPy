@@ -69,8 +69,26 @@ async def analyze_request(state: IntegratedState, config: dict) -> dict[str, Any
     
     lower_msg = user_message.lower()
     
+    # Check for balance queries first
+    if any(word in lower_msg for word in ["balance", "wallet", "holdings", "funds"]):
+        objective = {"raw_message": user_message, "type": "query", "query_type": "balance"}
+        return {
+            "current_objective": objective,
+            "messages": [AIMessage(content="Checking your balance...")],
+            "awaiting_user_input": False
+        }
+    
+    # Check for price queries
+    elif any(word in lower_msg for word in ["price", "cost", "worth", "value"]):
+        objective = {"raw_message": user_message, "type": "query", "query_type": "price"}
+        return {
+            "current_objective": objective,
+            "messages": [AIMessage(content="Getting price information...")],
+            "awaiting_user_input": False
+        }
+    
     # Check for transaction generation requests
-    if any(word in lower_msg for word in ["swap", "arbitrage", "transfer", "send"]):
+    elif any(word in lower_msg for word in ["swap", "arbitrage", "transfer", "send"]):
         objective = {"raw_message": user_message}
         
         if "swap" in lower_msg:
@@ -117,9 +135,104 @@ async def analyze_request(state: IntegratedState, config: dict) -> dict[str, Any
     
     # Default response
     return {
-        "messages": [AIMessage(content="I can help you generate and evaluate Ethereum transactions. Try asking me to swap tokens, find arbitrage opportunities, or transfer funds.")],
+        "messages": [AIMessage(content="I can help you with blockchain operations. Try asking me to:\n- Check your balance\n- Get token prices\n- Swap tokens\n- Find arbitrage opportunities\n- Transfer funds")],
         "awaiting_user_input": True
     }
+
+
+async def execute_query(state: IntegratedState, config: dict) -> dict[str, Any]:
+    """Execute blockchain queries like balance checks."""
+    logger.info("Executing blockchain query")
+    
+    objective = state.current_objective
+    if not objective:
+        return {
+            "messages": [AIMessage(content="No query found.")],
+            "awaiting_user_input": True
+        }
+    
+    query_type = objective.get("query_type")
+    user_message = objective.get("raw_message", "")
+    
+    try:
+        if query_type == "balance":
+            # Import blockchain tools
+            from src.dexter.tools import blockchain
+            
+            # Check ETH balance
+            eth_balance_str = await blockchain.get_eth_balance.ainvoke({
+                "address": "0xYourWalletAddress"
+            })
+            
+            message = "Your wallet balance:\n"
+            # The tool returns a string like "1.5 ETH" or "Error: ..."
+            if eth_balance_str.startswith("Error"):
+                message += f"{eth_balance_str}\n"
+            else:
+                message += f"{eth_balance_str}\n"
+            
+            # Check common token balances
+            tokens = {
+                "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                "DAI": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+            }
+            
+            for token_name, token_address in tokens.items():
+                try:
+                    balance_str = await blockchain.get_token_balance.ainvoke({
+                        "token_address": token_address,
+                        "wallet_address": "0xYourWalletAddress"
+                    })
+                    # The tool returns a string like "1000.0 USDC" or "Error: ..."
+                    if not balance_str.startswith("Error"):
+                        message += f"{balance_str}\n"
+                except Exception:
+                    pass
+            
+            return {
+                "messages": [AIMessage(content=message)],
+                "awaiting_user_input": True,
+                "current_objective": None  # Clear objective after query
+            }
+        
+        elif query_type == "price":
+            # Extract tokens from message
+            from src.dexter.tools import dex_prices
+            tokens = []
+            for token in ["eth", "usdc", "usdt", "dai", "weth"]:
+                if token in user_message.lower():
+                    tokens.append(token.upper())
+            
+            if len(tokens) >= 2:
+                # Get price string from tool
+                price_str = await dex_prices.get_all_dex_prices.ainvoke({
+                    "from_token": tokens[0],
+                    "to_token": tokens[1]
+                })
+                
+                message = f"Price of {tokens[0]} in {tokens[1]}:\n{price_str}"
+            else:
+                message = "Please specify two tokens to check prices (e.g., 'ETH to USDC price')"
+            
+            return {
+                "messages": [AIMessage(content=message)],
+                "awaiting_user_input": True,
+                "current_objective": None
+            }
+        
+        else:
+            return {
+                "messages": [AIMessage(content="Unknown query type.")],
+                "awaiting_user_input": True
+            }
+            
+    except Exception as e:
+        logger.error(f"Error executing query: {e}")
+        return {
+            "messages": [AIMessage(content=f"Error executing query: {str(e)}")],
+            "awaiting_user_input": True
+        }
 
 
 async def generate_transactions(state: IntegratedState, config: dict) -> dict[str, Any]:
@@ -141,11 +254,10 @@ async def generate_transactions(state: IntegratedState, config: dict) -> dict[st
             token_out = objective.get("token_out", "USDC")
             amount = objective.get("amount", "1")
             
-            # Get prices
+            # Get prices - just for logging
             prices = await dex_prices.get_all_dex_prices.ainvoke({
-                "token_in": token_in,
-                "token_out": token_out,
-                "amount_in": amount
+                "from_token": token_in,
+                "to_token": token_out
             })
             
             # Generate swap transaction
@@ -376,9 +488,14 @@ def should_continue(state: IntegratedState) -> str:
     if state.awaiting_user_input:
         return END
     
-    # If we have an objective but no transactions, generate them
-    if state.current_objective and not state.generated_transactions:
-        return "generate"
+    # If we have an objective
+    if state.current_objective:
+        # If it's a query, route to execute query
+        if state.current_objective.get("type") == "query":
+            return "execute_query"
+        # If it's a transaction objective but no transactions, generate them
+        elif not state.generated_transactions:
+            return "generate"
     
     # If we have transactions but no evaluation, evaluate them
     if state.generated_transactions and not state.evaluation_results:
@@ -419,6 +536,7 @@ def create_integrated_graph():
     
     # Add nodes
     workflow.add_node("analyze", analyze_request)
+    workflow.add_node("execute_query", execute_query)
     workflow.add_node("generate", generate_transactions)
     workflow.add_node("evaluate", evaluate_transactions)
     workflow.add_node("optimize", optimize_transactions)
@@ -431,6 +549,7 @@ def create_integrated_graph():
         "analyze",
         should_continue,
         {
+            "execute_query": "execute_query",
             "generate": "generate",
             "evaluate": "evaluate",
             "optimize": "optimize",
@@ -439,6 +558,12 @@ def create_integrated_graph():
     )
     
     # Add conditional edges from other nodes
+    workflow.add_conditional_edges(
+        "execute_query",
+        lambda state: END,  # Always end after query
+        {END: END}
+    )
+    
     workflow.add_conditional_edges(
         "generate",
         should_continue,
