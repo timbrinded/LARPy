@@ -3,23 +3,53 @@
 [![CI](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml)
 [![Integration Tests](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml)
 
-LARPy is an Ethereum DEX arbitrage detection bot built with LangGraph. This agent analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
+LARPy is an Ethereum DEX arbitrage detection bot built with LangGraph. This agent uses a **smart agent-driven architecture** to generate and validate Ethereum transactions before execution. It analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
 
 ## Architecture
 
 ![LARPy Architecture](./static/architecture.png)
 
+### Smart Agent Architecture
+
+LARPy implements a smart two-agent architecture for transaction handling:
+
+1. **Generator Agent**: Intelligently understands user intent and generates transactions
+   - Uses model reasoning to classify requests (no hardcoded patterns)
+   - Can query ANY smart contract via eth_call
+   - Fetches contract ABIs to understand interfaces
+   - Uses MCP Perplexity for online protocol research
+   - Creates transaction blocks internally (never shows raw data to users)
+   - Gives brief acknowledgments like "I'll prepare that swap for you..."
+
+2. **Evaluator Agent**: Validates, executes, and communicates results
+   - Simulates transactions using Alchemy tools
+   - The ONLY agent that reports transaction results to users
+   - Either executes and confirms success or explains issues
+   - Creates internal feedback loop for transaction improvement
+   - Provides user-friendly messages without technical details
+
 ## Overview
 
-LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph. The bot:
+LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph's agent-driven architecture. The bot:
 
+- **Intelligently Understands Intent**: Uses model reasoning instead of hardcoded patterns
+- **Generates Transactions**: Creates Ethereum transactions based on user objectives
+- **Validates with Simulations**: Uses Alchemy's simulation API to preview transactions
+- **Provides Smart Feedback**: Evaluator agent gives specific improvement suggestions
 - **Monitors Multiple DEXs**: Fetches real-time prices from Uniswap V3, SushiSwap, and Curve Finance
 - **Identifies Arbitrage**: Automatically detects profitable price discrepancies between exchanges
 - **Calculates Profits**: Factors in gas costs and provides net profit estimates
-- **Focuses on Major Tokens**: Works with well-audited tokens like ETH, USDC, USDT, WBTC, UNI, AAVE
-- **Provides Clear Strategies**: Generates step-by-step execution plans for identified opportunities
 
 ## Features
+
+### Smart Agent Features
+- **Intelligent intent classification**: Model reasoning instead of keyword matching
+- **Flexible transaction generation**: Adapts to various user requests
+- **Simulation-based validation**: Preview transactions before execution
+- **Smart feedback loop**: Specific improvement suggestions from evaluator
+- **Direct query support**: Immediate responses for balance and price checks
+- **Error recovery**: Agents intelligently handle and recover from errors
+- **Clean architecture**: Two specialized agents with minimal routing logic
 
 ### Blockchain Tools
 - Check ETH and ERC-20 token balances
@@ -41,6 +71,12 @@ LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates h
 - Calculate expected profits after gas costs
 - Generate formatted trading strategies
 - Analyze multiple token pairs in batch
+
+### MCP (Model Context Protocol) Integration
+- **Perplexity AI Search**: Enhanced search capabilities via MCP protocol
+- **Multi-turn Conversations**: Maintain context across Perplexity interactions
+- **Automatic Server Management**: MCP client handles server lifecycle
+- **Seamless Integration**: Works alongside existing search tools
 
 ## Getting Started
 
@@ -69,6 +105,12 @@ echo "OPENAI_API_KEY=your-openai-api-key-here" > .env
 echo "ALCHEMY_API_KEY=your-alchemy-api-key" >> .env
 echo "AGENT_ETH_KEY=your-ethereum-private-key" >> .env
 
+# Required for contract discovery
+echo "ETHERSCAN_API_KEY=your-etherscan-api-key" >> .env
+
+# For MCP Perplexity (online search)
+echo "PERPLEXITY_API_KEY=your-perplexity-api-key" >> .env
+
 # Optional: Add LangSmith for tracing
 echo "LANGSMITH_API_KEY=your-langsmith-key" >> .env
 ```
@@ -82,6 +124,17 @@ echo "ETH_RPC_URL=https://your-eth-rpc-endpoint" >> .env
 
 ⚠️ **SECURITY WARNING**: Never commit your `.env` file to version control. The `AGENT_ETH_KEY` contains your private key and must be kept secure.
 
+**API Keys**:
+- **Etherscan**: Get a free key at https://etherscan.io/apis
+- **Perplexity**: Get your API key at https://www.perplexity.ai/settings/api (used via MCP)
+- **Alchemy**: Sign up at https://www.alchemy.com/
+
+**MCP Setup** (Model Context Protocol):
+- The agent uses MCP to connect to Perplexity for enhanced search capabilities
+- The Perplexity MCP server (`@ppl-ai/mcp-perplexity`) will be automatically started when needed
+- Ensure you have Node.js installed for MCP server support
+- No additional configuration needed - the integration handles server lifecycle automatically
+
 ### Running the Agent
 
 Start the LangGraph development server:
@@ -92,9 +145,22 @@ uv run langgraph dev
 
 The server will start on `http://localhost:8123` with LangGraph Studio available for visual debugging.
 
+### Available Graphs
+
+1. **`agent`** (Recommended) - Smart agent-driven workflow
+   - Intelligent intent classification without hardcoded patterns
+   - Two specialized agents: Generator and Evaluator
+   - Clean separation of concerns with minimal routing logic
+   - Leverages model reasoning for better flexibility
+
+2. **`react`** - React pattern agent
+   - Direct tool execution
+   - Good for exploration and debugging
+   - Simple single-agent approach
+
 ### Testing the Arbitrage Bot
 
-Once the server is running, you can interact with the bot through the LangGraph Studio UI or API. Here are example queries:
+Once the server is running, select the **`agent`** graph in LangGraph Studio and interact with it. Here are example queries:
 
 #### 1. Check current gas prices:
 ```
@@ -108,9 +174,24 @@ Once the server is running, you can interact with the bot through the LangGraph 
 "Check stETH/ETH price on Curve Finance"
 ```
 
-#### 3. Find arbitrage opportunities:
+#### 3. Generate and evaluate transactions:
 ```
-"Find arbitrage opportunities for ETH/USDC, ETH/USDT, and WBTC/ETH pairs"
+"I want to swap 2 ETH for USDC"
+# The agent will:
+# 1. Generate the swap transaction
+# 2. Evaluate it for gas, security, and correctness
+# 3. Suggest optimizations if needed
+# 4. Ask for approval before finalizing
+```
+
+#### 4. Find arbitrage opportunities:
+```
+"Find arbitrage opportunities for ETH/USDC"
+# The agent will:
+# 1. Check prices across DEXs
+# 2. Generate arbitrage transaction if profitable
+# 3. Evaluate the transaction
+# 4. Optimize for maximum profit
 ```
 
 #### 4. Get a full arbitrage analysis:
@@ -301,6 +382,31 @@ uv run mypy src/
 - **Multi-hop Arbitrage**: Support complex paths like ETH → USDC → DAI → ETH
 - **Cross-chain Arbitrage**: Add support for L2s and bridges
 - **Analytics Dashboard**: Track historical performance and opportunities
+
+### Smart Agent Architecture (New)
+
+The new `agent` graph uses a simplified two-agent architecture that leverages model intelligence:
+
+1. **Generator Agent** - Smart intent understanding and transaction creation
+   - Uses model reasoning to classify intent (no hardcoded patterns)
+   - Has access to all blockchain/DEX tools
+   - Handles direct queries immediately (balance, price checks)
+   - Creates complete transaction blocks for complex operations
+   - Formats transactions for evaluator when needed
+
+2. **Evaluator Agent** - Transaction validation and execution
+   - Receives transaction blocks from generator
+   - Simulates using Alchemy tools
+   - Either executes valid transactions or provides specific feedback
+   - Feedback loops back to generator for improvements
+
+Key improvements:
+- No string manipulation or regex patterns
+- Model decides tool usage based on understanding
+- Clean separation between generation and evaluation
+- Flexible intent handling for new use cases
+- Better error recovery through agent intelligence
+
 
 <!--
 Configuration auto-generated by `langgraph template lock`. DO NOT EDIT MANUALLY.

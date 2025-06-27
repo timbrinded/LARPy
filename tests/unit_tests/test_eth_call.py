@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from web3.exceptions import ContractLogicError
 
 from dexter.tools.blockchain import eth_call
@@ -34,7 +33,10 @@ class TestEthCall:
         )
 
         assert result["success"] is True
-        assert result["result"] == "0x00000000000000000000000000000000000000000000000000000000000003e8"
+        assert (
+            result["result"]
+            == "0x00000000000000000000000000000000000000000000000000000000000003e8"
+        )
         assert result["to"] == "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
         assert result["state_overrides"] is None
 
@@ -71,7 +73,10 @@ class TestEthCall:
         )
 
         assert result["success"] is True
-        assert result["result"] == "0x0000000000000000000000000000000000000000000000000000000000002710"
+        assert (
+            result["result"]
+            == "0x0000000000000000000000000000000000000000000000000000000000002710"
+        )
         assert result["state_overrides"] == state_overrides
 
         # Verify state overrides were passed to web3.eth.call
@@ -110,11 +115,14 @@ class TestEthCall:
         )
 
         assert result["success"] is True
-        
+
         # Check that integer balance was converted to hex
         call_args = mock_web3.eth.call.call_args
         actual_overrides = call_args[0][2]
-        assert actual_overrides["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"]["balance"] == "0xde0b6b3a7640000"
+        assert (
+            actual_overrides["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"]["balance"]
+            == "0xde0b6b3a7640000"
+        )
 
     @patch("dexter.tools.blockchain.Web3")
     @patch("dexter.tools.blockchain.get_config")
@@ -240,8 +248,10 @@ class TestEthCall:
         )
 
         assert result["success"] is True
-        
+
         # Verify custom RPC was used
-        mock_web3_class.HTTPProvider.assert_called_with("https://custom-rpc.example.com")
+        mock_web3_class.HTTPProvider.assert_called_with(
+            "https://custom-rpc.example.com"
+        )
         # Config should not be called when custom RPC is provided
         mock_get_config.assert_not_called()

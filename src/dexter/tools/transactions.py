@@ -10,6 +10,7 @@ from web3 import Web3
 from web3.types import TxParams
 
 from ..config_loader import get_config
+from .wallet_utils import resolve_address
 
 
 class SubmitTransactionInput(BaseModel):
@@ -105,8 +106,8 @@ def submit_transaction(
         account = w3.eth.account.from_key(private_key)
         from_address = account.address
 
-        # Validate addresses
-        to_address = w3.to_checksum_address(to_address)
+        # Validate and resolve addresses
+        to_address = w3.to_checksum_address(resolve_address(to_address))
 
         # Build transaction
         tx: TxParams = {
@@ -224,10 +225,10 @@ def alchemy_simulate_asset_changes(
     url = f"https://{network}.g.alchemy.com/v2/{alchemy_api_key}"
 
     try:
-        # Validate addresses
+        # Validate and resolve addresses
         w3 = Web3()
-        from_address = w3.to_checksum_address(from_address)
-        to_address = w3.to_checksum_address(to_address)
+        from_address = w3.to_checksum_address(resolve_address(from_address))
+        to_address = w3.to_checksum_address(resolve_address(to_address))
 
         # Build the request
         payload = {

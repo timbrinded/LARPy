@@ -1,5 +1,10 @@
 """Tools for the Ethereum arbitrage bot."""
 
+from .agent_tools import (
+    agent_tools,
+    call_contract,
+    get_my_balance,
+)
 from .arbitrage import (
     analyze_token_pair_opportunities,
     calculate_profit,
@@ -17,6 +22,13 @@ from .blockchain import (
     get_token_balance,
     get_transaction_tool,
 )
+from .debug_tools import (
+    debug_tools,
+    debug_traceTransaction,
+)
+from .debug_tools import (
+    eth_call as eth_call_tool,
+)
 from .dex_prices import (
     discover_curve_pools,
     get_all_dex_prices,
@@ -27,16 +39,26 @@ from .dex_prices import (
     get_sushiswap_price,
     get_uniswap_v3_price,
 )
+from .etherscan_tool import (
+    etherscan_tools,
+    get_contract_abi,
+    get_contract_source,
+)
+from .mcp_client import (
+    call_mcp_tool,
+    perplexity_conversation,
+    perplexity_search,
+)
+from .swap_encoder import (
+    encode_erc20_approve,
+    encode_sushiswap_swap,
+    encode_uniswap_v3_swap,
+    swap_encoding_tools,
+)
 from .transactions import (
     alchemy_simulate_tool,
     submit_transaction_tool,
     transaction_tools,
-)
-from .swap_encoder import (
-    encode_uniswap_v3_swap,
-    encode_sushiswap_swap,
-    encode_erc20_approve,
-    swap_encoding_tools,
 )
 
 __all__ = [
@@ -73,4 +95,20 @@ __all__ = [
     "encode_sushiswap_swap",
     "encode_erc20_approve",
     "swap_encoding_tools",
+    # Debug tools
+    "debug_traceTransaction",
+    "eth_call_tool",
+    "debug_tools",
+    # Etherscan tools
+    "get_contract_abi",
+    "get_contract_source",
+    "etherscan_tools",
+    # MCP tools
+    "perplexity_search",
+    "perplexity_conversation",
+    "call_mcp_tool",
+    # Agent-aware tools
+    "get_my_balance",
+    "call_contract",
+    "agent_tools",
 ]

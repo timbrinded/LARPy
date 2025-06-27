@@ -1,7 +1,8 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "dexter": "./src/dexter/premade.py:graph"
+    "agent": "./graphs.py:agent",
+    "react": "./graphs.py:react"
   },
   "env": ".env",
   "image_distro": "wolfi"
