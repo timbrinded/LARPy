@@ -5,20 +5,20 @@ import logging
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
-from dexter.config_loader import get_config
-from dexter.tools.arbitrage import (
+from .config_loader import get_config
+from .tools.arbitrage import (
     analyze_token_pair_opportunities,
     calculate_profit,
     find_arbitrage_opportunities,
     format_arbitrage_strategy,
 )
-from dexter.tools.blockchain import (
+from .tools.blockchain import (
     estimate_transaction_cost,
     get_eth_balance,
     get_gas_price,
     get_token_balance,
 )
-from dexter.tools.dex_prices import (
+from .tools.dex_prices import (
     discover_curve_pools,
     get_all_dex_prices,
     get_all_dex_prices_extended,
@@ -28,12 +28,12 @@ from dexter.tools.dex_prices import (
     get_sushiswap_price,
     get_uniswap_v3_price,
 )
-from dexter.tools.swap_encoder import (
+from .tools.swap_encoder import (
     encode_erc20_approve,
     encode_sushiswap_swap,
     encode_uniswap_v3_swap,
 )
-from dexter.tools.transactions import (
+from .tools.transactions import (
     alchemy_simulate_tool,
     submit_transaction_tool,
 )

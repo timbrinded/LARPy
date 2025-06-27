@@ -15,8 +15,9 @@ LARPy implements a smart two-agent architecture for transaction handling:
 
 1. **Generator Agent**: Intelligently understands user intent and generates transactions
    - Uses model reasoning to classify requests (no hardcoded patterns)
-   - Direct access to all blockchain and DEX tools
-   - Handles simple queries immediately (balance, price checks)
+   - Can query ANY smart contract via eth_call
+   - Fetches contract ABIs to understand interfaces
+   - Uses MCP Perplexity for online protocol research
    - Creates transaction blocks internally (never shows raw data to users)
    - Gives brief acknowledgments like "I'll prepare that swap for you..."
 
@@ -98,6 +99,12 @@ echo "OPENAI_API_KEY=your-openai-api-key-here" > .env
 echo "ALCHEMY_API_KEY=your-alchemy-api-key" >> .env
 echo "AGENT_ETH_KEY=your-ethereum-private-key" >> .env
 
+# Required for contract discovery
+echo "ETHERSCAN_API_KEY=your-etherscan-api-key" >> .env
+
+# For MCP Perplexity (online search)
+echo "PERPLEXITY_API_KEY=your-perplexity-api-key" >> .env
+
 # Optional: Add LangSmith for tracing
 echo "LANGSMITH_API_KEY=your-langsmith-key" >> .env
 ```
@@ -110,6 +117,13 @@ echo "ETH_RPC_URL=https://your-eth-rpc-endpoint" >> .env
 ```
 
 ⚠️ **SECURITY WARNING**: Never commit your `.env` file to version control. The `AGENT_ETH_KEY` contains your private key and must be kept secure.
+
+**API Keys**:
+- **Etherscan**: Get a free key at https://etherscan.io/apis
+- **Perplexity**: Get your API key at https://www.perplexity.ai/settings/api (used via MCP)
+- **Alchemy**: Sign up at https://www.alchemy.com/
+
+**Note**: The agent uses MCP (Model Context Protocol) to connect to Perplexity. The MCP server will be automatically started when needed.
 
 ### Running the Agent
 

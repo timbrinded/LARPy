@@ -12,20 +12,16 @@ from langgraph.prebuilt import create_react_agent
 
 from src.dexter.config_loader import get_config
 from src.dexter.tools import (
-    alchemy_simulate_tool,
-    calculate_profit,
+    call_contract,
+    debug_traceTransaction,
     encode_erc20_approve,
     encode_sushiswap_swap,
     encode_uniswap_v3_swap,
-    estimate_transaction_cost,
-    find_arbitrage_opportunities,
-    get_all_dex_prices,
-    get_curve_price,
-    get_eth_balance,
-    get_gas_price,
-    get_sushiswap_price,
-    get_token_balance,
-    get_uniswap_v3_price,
+    eth_call_tool,
+    get_contract_abi,
+    get_contract_source,
+    get_my_balance,
+    search_online,
     submit_transaction_tool,
 )
 
@@ -61,32 +57,38 @@ def create_generator_agent():
     )
     
     tools = [
-        # Direct query tools
-        get_eth_balance,
-        get_token_balance,
-        get_gas_price,
-        estimate_transaction_cost,
-        # Price tools
-        get_uniswap_v3_price,
-        get_sushiswap_price,
-        get_all_dex_prices,
-        get_curve_price,
-        # Arbitrage tools
-        find_arbitrage_opportunities,
-        calculate_profit,
-        # Transaction encoding
+        # Agent-aware tools (know the wallet address)
+        get_my_balance,
+        call_contract,
+        # Smart contract interaction
+        eth_call_tool,
+        get_contract_abi,
+        get_contract_source,
+        # Online search
+        search_online,
+        # Transaction encoding (kept for convenience)
         encode_uniswap_v3_swap,
         encode_sushiswap_swap,
         encode_erc20_approve,
     ]
     
-    system_prompt = """You are a smart Ethereum transaction generator agent.
+    system_prompt = """You are a smart Ethereum transaction generator agent with powerful contract interaction capabilities.
 
 Your job is to:
-1. Understand what the user wants (balance check, price query, swap, arbitrage, etc.)
-2. Use the appropriate tools to either:
-   - Answer directly (for queries like balance or price)
+1. Understand what the user wants - be creative and flexible
+2. Use your tools to:
+   - Query any smart contract with eth_call (balances, prices, states)
+   - Fetch ABIs to understand contract interfaces
+   - Search online for protocol documentation and addresses
    - Generate transaction blocks for execution
+
+Key capabilities:
+- get_my_balance: Check the agent's ETH or token balance (knows wallet address automatically)
+- call_contract: Call any contract function from the agent's address
+- eth_call: Read ANY contract data (for general queries)
+- get_contract_abi: Understand what functions a contract exposes
+- search_online: Find current protocol info, contract addresses, docs
+- Transaction encoders: For common operations (kept for convenience)
 
 For transaction generation:
 - Use encoding tools to create proper transaction data
@@ -104,15 +106,24 @@ For direct queries:
 - Just answer the user directly using the tools
 - No need for the [INTERNAL_DATA] section
 
+For execution requests (e.g., "submit", "execute", "do it"):
+- If you have context about a previous transaction, recreate it
+- If not, ask what they want to execute
+- Always format with [USER_MESSAGE] and [INTERNAL_DATA]
+
 IMPORTANT: 
 - The [USER_MESSAGE] section is what the user sees
 - The [INTERNAL_DATA] section contains transaction JSON (hidden from user)
 - Keep user messages brief and friendly
 
 Remember:
-- Users are at address 0xYourWalletAddress unless specified
+- When users refer to "my wallet" or "my address", use the agent's address from environment
+- For eth_call, if you need a from_address, use the agent's address
 - Be smart about understanding intent - don't rely on keywords
 - Generate complete transaction blocks ready for execution
+- When users say "submit" or "execute", they want to execute a transaction
+
+IMPORTANT: Never use "0xYourWalletAddress" literally in tool calls. The tools will handle address resolution.
 """
     
     return create_react_agent(model=model, tools=tools, prompt=system_prompt)
@@ -129,7 +140,8 @@ def create_evaluator_agent():
     )
     
     tools = [
-        alchemy_simulate_tool,
+        eth_call_tool,
+        debug_traceTransaction,
         submit_transaction_tool,
     ]
     
@@ -137,18 +149,18 @@ def create_evaluator_agent():
 
 Your job is to:
 1. Receive transaction blocks from the generator
-2. Simulate them using alchemy_simulate_tool
+2. Validate them using eth_call (to simulate without spending gas)
 3. Communicate results to the user
 
-When evaluating:
-- Simulate each transaction carefully
-- Check for success and expected outcomes
-- Look for security issues (high slippage, MEV risk)
-- Consider gas costs
+When evaluating with eth_call:
+- Use the transaction's to, data, and value fields
+- Check if the call succeeds or reverts
+- Look at return data to verify expected outcomes
+- You can trace executed transactions with debug_traceTransaction
 
 Communication rules:
-- For successful simulations: Execute and tell user "✅ Transaction executed successfully! [details]"
-- For failed simulations: Explain the issue and say "Let me try a different approach..."
+- For successful validations: Execute with submit_transaction_tool and tell user "✅ Transaction executed successfully! [details]"
+- For failed validations: Explain the issue and say "Let me try a different approach..."
 - Always be user-friendly - no raw transaction data
 - You are the ONLY agent that talks to the user about transaction results
 
@@ -231,7 +243,7 @@ async def run_evaluator(state: AgentState, config: dict) -> dict[str, Any]:
     tx_message = f"Evaluate and process these transactions:\n```json\n{tx_details}\n```"
     
     if state.evaluation_feedback:
-        tx_message += f"\n\nThe generator addressed previous feedback. Please re-evaluate."
+        tx_message += "\n\nThe generator addressed previous feedback. Please re-evaluate."
     
     # Run evaluator
     result = await evaluator_agent.ainvoke({
@@ -276,21 +288,32 @@ async def run_evaluator(state: AgentState, config: dict) -> dict[str, Any]:
     return updates
 
 
-def should_continue(state: AgentState) -> str:
-    """Determine next step in the workflow."""
-    if state.completed:
-        return END
-    
+def should_continue_from_generator(state: AgentState) -> str:
+    """Determine next step from generator - never ends."""
     # If we have pending transactions, evaluate them
     if state.pending_transactions:
         return "evaluator"
     
-    # If we have evaluation feedback, go back to generator
+    # If we have evaluation feedback, stay in generator
     if state.evaluation_feedback and not state.completed:
         return "generator"
     
-    # If no transactions and no feedback, go to evaluator to finalize
+    # Always go to evaluator (even if completed)
     return "evaluator"
+
+
+def should_continue_from_evaluator(state: AgentState) -> str:
+    """Determine next step from evaluator - can end."""
+    # If completed, end the flow
+    if state.completed:
+        return END
+    
+    # If we have evaluation feedback, go back to generator
+    if state.evaluation_feedback:
+        return "generator"
+    
+    # Otherwise end
+    return END
 
 
 def create_agent_graph():
@@ -307,7 +330,7 @@ def create_agent_graph():
     # Add conditional edges
     workflow.add_conditional_edges(
         "generator",
-        should_continue,
+        should_continue_from_generator,
         {
             "evaluator": "evaluator",
             "generator": "generator"
@@ -316,7 +339,7 @@ def create_agent_graph():
     
     workflow.add_conditional_edges(
         "evaluator",
-        should_continue,
+        should_continue_from_evaluator,
         {
             "generator": "generator",
             END: END
