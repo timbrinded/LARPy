@@ -3,52 +3,49 @@
 [![CI](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml)
 [![Integration Tests](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml)
 
-LARPy is an Ethereum DEX arbitrage detection bot built with LangGraph. This agent uses an **evaluator-optimizer pattern** to validate and optimize Ethereum transactions before execution. It analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
+LARPy is an Ethereum DEX arbitrage detection bot built with LangGraph. This agent uses a **smart agent-driven architecture** to generate and validate Ethereum transactions before execution. It analyzes price differences across major DEXs (Uniswap V3, SushiSwap, Curve Finance) to identify profitable arbitrage opportunities for popular tokens.
 
 ## Architecture
 
 ![LARPy Architecture](./static/architecture.png)
 
-### Evaluator-Optimizer Pattern
+### Smart Agent Architecture
 
-LARPy implements a sophisticated evaluator-optimizer pattern for transaction validation:
+LARPy implements a smart two-agent architecture for transaction handling:
 
-1. **Transaction Generation**: Creates initial transaction proposals based on user objectives
-2. **Evaluation**: Validates transactions against multiple criteria:
-   - Gas efficiency
-   - Security (MEV protection, slippage)
-   - Correctness (state changes match objectives)
-   - Efficiency (optimal routing)
-3. **Optimization**: Improves transactions based on evaluation feedback
-4. **Subagent Analysis**: Spawns specialized agents for deep validation:
-   - **Gas Analyzer**: Optimizes gas usage patterns
-   - **Security Validator**: Checks for vulnerabilities
-   - **MEV Inspector**: Assesses MEV attack risks
-   - **State Validator**: Confirms expected state changes
-5. **Finalization**: Prepares validated transactions for execution
+1. **Generator Agent**: Intelligently understands user intent and generates transactions
+   - Uses model reasoning to classify requests (no hardcoded patterns)
+   - Direct access to all blockchain and DEX tools
+   - Handles simple queries immediately (balance, price checks)
+   - Creates complete transaction blocks for complex operations
+
+2. **Evaluator Agent**: Validates and executes transactions
+   - Simulates transactions using Alchemy tools
+   - Either executes valid transactions or provides specific feedback
+   - Creates a feedback loop for transaction improvement
 
 ## Overview
 
-LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph's evaluator-optimizer pattern. The bot:
+LARPy (LangGraph ARbitrage Python bot) is a proof-of-concept that demonstrates how to build a crypto trading agent using LangGraph's agent-driven architecture. The bot:
 
-- **Generates Transactions**: Creates Ethereum transactions based on user objectives (swaps, arbitrage, transfers)
-- **Evaluates Transactions**: Validates against gas efficiency, security, correctness, and MEV protection
-- **Optimizes Automatically**: Improves transactions based on evaluation feedback
-- **Spawns Subagents**: Uses specialized validators for deep analysis
+- **Intelligently Understands Intent**: Uses model reasoning instead of hardcoded patterns
+- **Generates Transactions**: Creates Ethereum transactions based on user objectives
+- **Validates with Simulations**: Uses Alchemy's simulation API to preview transactions
+- **Provides Smart Feedback**: Evaluator agent gives specific improvement suggestions
 - **Monitors Multiple DEXs**: Fetches real-time prices from Uniswap V3, SushiSwap, and Curve Finance
 - **Identifies Arbitrage**: Automatically detects profitable price discrepancies between exchanges
 - **Calculates Profits**: Factors in gas costs and provides net profit estimates
 
 ## Features
 
-### Transaction Evaluation & Optimization
-- **Multi-criteria validation**: Gas, security, efficiency, correctness
-- **Automatic optimization**: Improves transactions based on validation feedback
-- **Subagent coordination**: Parallel analysis by specialized validators
-- **Configurable rules**: Customizable thresholds and validation criteria
-- **Optimization tips**: Actionable feedback for transaction improvement
-- **Error recovery**: Intelligent handling of validation errors with retry capabilities
-- **Direct query support**: Balance checks and price queries without transaction generation
+### Smart Agent Features
+- **Intelligent intent classification**: Model reasoning instead of keyword matching
+- **Flexible transaction generation**: Adapts to various user requests
+- **Simulation-based validation**: Preview transactions before execution
+- **Smart feedback loop**: Specific improvement suggestions from evaluator
+- **Direct query support**: Immediate responses for balance and price checks
+- **Error recovery**: Agents intelligently handle and recover from errors
+- **Clean architecture**: Two specialized agents with minimal routing logic
 
 ### Blockchain Tools
 - Check ETH and ERC-20 token balances
